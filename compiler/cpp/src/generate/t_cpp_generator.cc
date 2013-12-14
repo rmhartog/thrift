@@ -81,6 +81,9 @@ class t_cpp_generator : public t_oop_generator {
     gen_templates_only_ =
       (iter != parsed_options.end() && iter->second == "only");
 
+    iter = parsed_options.find("externc");
+    gen_extern_c_ = (iter != parsed_options.end());
+
     out_dir_base_ = "gen-cpp";
   }
 
@@ -101,11 +104,15 @@ class t_cpp_generator : public t_oop_generator {
   void generate_enum(t_enum* tenum);
   void generate_struct(t_struct* tstruct) {
     generate_cpp_struct(tstruct, false);
+    if (gen_extern_c_) {
+      generate_c_struct(tstruct, false);
+    }
   }
   void generate_xception(t_struct* txception) {
     generate_cpp_struct(txception, true);
   }
   void generate_cpp_struct(t_struct* tstruct, bool is_exception);
+  void generate_c_struct(t_struct* tstruct, bool is_exception);
 
   void generate_service(t_service* tservice);
 
@@ -124,6 +131,8 @@ class t_cpp_generator : public t_oop_generator {
   void generate_struct_result_writer (std::ofstream& out, t_struct* tstruct, bool pointers=false);
   void generate_struct_swap          (std::ofstream& out, t_struct* tstruct);
 
+  void generate_c_accessors          (std::ofstream& out, t_struct* tstruct, bool is_exception=false);
+
   /**
    * Service-level generation functions
    */
@@ -136,6 +145,7 @@ class t_cpp_generator : public t_oop_generator {
   void generate_service_client    (t_service* tservice, string style);
   void generate_service_processor (t_service* tservice, string style);
   void generate_service_skeleton  (t_service* tservice);
+  void generate_service_delegator (t_service* tservice);
   void generate_process_function  (t_service* tservice, t_function* tfunction,
                                    string style, bool specialized=false);
   void generate_function_helpers  (t_service* tservice, t_function* tfunction);
@@ -211,6 +221,8 @@ class t_cpp_generator : public t_oop_generator {
   std::string namespace_close(std::string ns);
   std::string type_name(t_type* ttype, bool in_typedef=false, bool arg=false);
   std::string base_type_name(t_base_type::t_base tbase);
+  std::string type_name_c(t_type* ttype, bool in_name=false, bool in_return=false);
+  std::string base_type_name_c(t_base_type::t_base tbase, bool in_name=false, bool in_return=false);
   std::string declare_field(t_field* tfield, bool init=false, bool pointer=false, bool constant=false, bool reference=false);
   std::string function_signature(t_function* tfunction, std::string style, std::string prefix="", bool name_params=true);
   std::string cob_function_signature(t_function* tfunction, std::string prefix="", bool name_params=true);
@@ -292,6 +304,11 @@ class t_cpp_generator : public t_oop_generator {
   bool gen_no_default_operators_;
 
   /**
+   * True if we should generate extern "C" wrappers.
+   */
+  bool gen_extern_c_;
+
+  /**
    * Strings for namespace, computed once up front then used directly
    */
 
@@ -304,6 +321,7 @@ class t_cpp_generator : public t_oop_generator {
    */
 
   std::ofstream f_types_;
+  std::ofstream f_types_c_;
   std::ofstream f_types_impl_;
   std::ofstream f_types_tcc_;
   std::ofstream f_header_;
@@ -336,6 +354,12 @@ void t_cpp_generator::init_generator() {
   string f_types_name = get_out_dir()+program_name_+"_types.h";
   f_types_.open(f_types_name.c_str());
 
+  string f_types_c_name;
+  if (gen_extern_c_) {
+    f_types_c_name = get_out_dir()+program_name_+"_types_c.h";
+    f_types_c_.open(f_types_c_name.c_str());
+  }
+
   string f_types_impl_name = get_out_dir()+program_name_+"_types.cpp";
   f_types_impl_.open(f_types_impl_name.c_str());
 
@@ -349,6 +373,10 @@ void t_cpp_generator::init_generator() {
   // Print header
   f_types_ <<
     autogen_comment();
+  if (gen_extern_c_) {
+    f_types_c_ <<
+      autogen_comment();
+  }
   f_types_impl_ <<
     autogen_comment();
   f_types_tcc_ <<
@@ -359,6 +387,16 @@ void t_cpp_generator::init_generator() {
     "#ifndef " << program_name_ << "_TYPES_H" << endl <<
     "#define " << program_name_ << "_TYPES_H" << endl <<
     endl;
+  if (gen_extern_c_) {
+    f_types_c_ <<
+      "#ifndef " << program_name_ << "_TYPES_C_H" << endl <<
+      "#define " << program_name_ << "_TYPES_C_H" << endl <<
+      endl <<
+      "#ifdef __cplusplus" << endl <<
+      "extern \"C\" {" << endl <<
+      "#endif" << endl <<
+      endl;
+  }
   f_types_tcc_ <<
     "#ifndef " << program_name_ << "_TYPES_TCC" << endl <<
     "#define " << program_name_ << "_TYPES_TCC" << endl <<
@@ -371,6 +409,12 @@ void t_cpp_generator::init_generator() {
     "#include <thrift/protocol/TProtocol.h>" << endl <<
     "#include <thrift/transport/TTransport.h>" << endl <<
     endl;
+  if (gen_extern_c_) {
+    f_types_c_ <<
+      "#include <stdbool.h>" << endl <<
+      "#include <stdint.h>" << endl <<
+      endl;
+  }
   // Include C++xx compatibility header
   f_types_ << "#include <thrift/cxxfunctional.h>" << endl;
 
@@ -468,11 +512,22 @@ void t_cpp_generator::close_generator() {
   // Close ifndef
   f_types_ <<
     "#endif" << endl;
+  if (gen_extern_c_) {
+    f_types_c_ << endl <<
+      "#ifdef __cplusplus" << endl <<
+      "}" << endl <<
+      "#endif" << endl <<
+      endl <<
+      "#endif" << endl;
+  }
   f_types_tcc_ <<
     "#endif" << endl;
 
   // Close output file
   f_types_.close();
+  if (gen_extern_c_) {
+    f_types_c_.close();
+  }
   f_types_impl_.close();
   f_types_tcc_.close();
 }
@@ -797,6 +852,13 @@ void t_cpp_generator::generate_cpp_struct(t_struct* tstruct, bool is_exception) 
   generate_struct_reader(out, tstruct);
   generate_struct_writer(out, tstruct);
   generate_struct_swap(f_types_impl_, tstruct);
+}
+
+/**
+ * TODO
+ */
+void t_cpp_generator::generate_c_struct(t_struct* tstruct, bool is_exception) {
+  generate_c_accessors(f_types_c_, tstruct, is_exception);
 }
 
 /**
@@ -1590,6 +1652,46 @@ void t_cpp_generator::generate_struct_swap(ofstream& out, t_struct* tstruct) {
 }
 
 /**
+ * TODO
+ */
+void t_cpp_generator::generate_c_accessors(ofstream& out, t_struct* tstruct, bool is_exception) {
+  string handle_name = type_name_c(tstruct, true) + "_handle";
+
+  out <<
+    indent() << "typedef void* " <<
+      handle_name <<";" << endl <<
+      endl;
+
+  const vector<t_field*>& fields = tstruct->get_members();
+  for (vector<t_field*>::const_iterator f_iter = fields.begin();
+       f_iter != fields.end();
+       ++f_iter) {
+    t_field *tfield = *f_iter;
+
+    if (tfield->get_req() != t_field::T_REQUIRED) {
+      out <<
+        indent() << "bool " << tstruct->get_name() << "_" <<
+          tfield->get_name() << "_isset(" <<
+          handle_name << ");" << endl;
+    }
+    out <<
+      indent() << type_name_c(tfield->get_type()) << " " <<
+        tstruct->get_name() << "_" <<
+        tfield->get_name() << "_get(" <<
+        handle_name << ");" << endl;
+    out <<
+      indent() << "void " << tstruct->get_name() << "_" <<
+        tfield->get_name() << "_set(" <<
+        handle_name << ", " <<
+        type_name_c(tfield->get_type()) <<
+        ");" << endl;
+
+    out << endl;
+  }
+  out << endl;
+}
+
+/**
  * Generates a thrift service. In C++, this comprises an entirely separate
  * header and source file. The header file defines the methods and includes
  * the data types defined in the main header file, and the implementation
@@ -1690,6 +1792,9 @@ void t_cpp_generator::generate_service(t_service* tservice) {
   generate_service_processor(tservice, "");
   generate_service_multiface(tservice);
   generate_service_skeleton(tservice);
+  if (gen_extern_c_) {
+    generate_service_delegator(tservice);
+  }
 
   // Generate all the cob components
   if (gen_cob_style_) {
@@ -3832,6 +3937,242 @@ void t_cpp_generator::generate_service_skeleton(t_service* tservice) {
 }
 
 /**
+ * Generates a delegator file of a handler
+ *
+ * @param tservice The service to generate a server for.
+ */
+void t_cpp_generator::generate_service_delegator(t_service* tservice) {
+  string svcname = tservice->get_name();
+
+  // Service implementation file includes
+  string f_delegator_name = get_out_dir()+svcname+"_delegator.cpp";
+  string f_delegator_h_name = get_out_dir()+svcname+"_delegator.h";
+
+  string ns = namespace_prefix(tservice->get_program()->get_namespace("cpp"));
+
+  ofstream f_delegator, f_delegator_h;
+  f_delegator.open(f_delegator_name.c_str());
+  f_delegator_h.open(f_delegator_h_name.c_str());
+
+  f_delegator << autogen_comment();
+  f_delegator_h << autogen_comment();
+
+  f_delegator <<
+    "#include \"thriftlist.h\"" << endl <<
+    "#include \"" << get_include_prefix(*get_program()) << svcname << ".h\"" << endl <<
+    "#include \"" << get_include_prefix(*get_program()) << svcname << "_delegator.h\"" << endl <<
+    "#include <thrift/protocol/TBinaryProtocol.h>" << endl <<
+    "#include <thrift/server/TSimpleServer.h>" << endl <<
+    "#include <thrift/transport/TServerSocket.h>" << endl <<
+    "#include <thrift/transport/TBufferTransports.h>" << endl <<
+    endl <<
+    "using namespace ::apache::thrift;" << endl <<
+    "using namespace ::apache::thrift::protocol;" << endl <<
+    "using namespace ::apache::thrift::transport;" << endl <<
+    "using namespace ::apache::thrift::server;" << endl <<
+    endl <<
+    "using boost::shared_ptr;" << endl <<
+    endl;
+
+  f_delegator_h <<
+    "#ifdef __cplusplus" << endl <<
+    "extern \"C\" {" << endl <<
+    "#endif" << endl <<
+    endl;
+
+  f_delegator_h <<
+    "typedef struct " << svcname << "_delegator& " << svcname << "_handle;" << endl <<
+    endl;
+
+  // the following code would not compile:
+  // using namespace ;
+  // using namespace ::;
+  if ( (!ns.empty()) && (ns.compare(" ::") != 0)) {
+    f_delegator <<
+      "using namespace " << string(ns, 0, ns.size()-2) << ";" << endl <<
+      endl;
+  }
+
+  f_delegator <<
+    "class " << svcname << "Delegator : virtual public " << svcname << "If {" << endl <<
+    " public:" << endl;
+  indent_up();
+  f_delegator <<
+    indent() << svcname << "Delegator() {" << endl <<
+    indent() << "}" << endl <<
+    endl;
+
+  vector<t_function*> functions = tservice->get_functions();
+  vector<t_function*>::iterator f_iter;
+  for (f_iter = functions.begin(); f_iter != functions.end(); ++f_iter) {
+    t_function *tfunction = *f_iter;
+
+    f_delegator_h <<
+      "typedef void (*" << tfunction->get_name() << "_callback)(";
+
+    bool first = true;
+    if (!tfunction->get_returntype()->is_void()) {
+      f_delegator_h <<
+        type_name_c(tfunction->get_returntype(), false, true);
+
+      first = false;
+    }
+
+    vector<t_field*> arguments = tfunction->get_arglist()->get_members();
+    vector<t_field*>::iterator arg_iter;
+    for (arg_iter = arguments.begin(); arg_iter != arguments.end(); ++arg_iter) {
+      if (!first) {
+        f_delegator_h << ", ";
+      } else {
+        first = false;
+      }
+
+      f_delegator_h << 
+        type_name_c((*arg_iter)->get_type(), false, false);
+    }
+
+//if (!tfunction->get_returntype()->is_void()) {
+//  ret_arg = ", const " + type_name(tfunction->get_returntype()) +
+//  "& _return";
+
+    f_delegator_h <<
+      ");" << endl;
+
+    f_delegator <<
+      indent() << function_signature(tfunction, "") << " {" << endl;
+    indent_up();
+
+    f_delegator <<
+      indent() << "if (" << tfunction->get_name() << "_" << " == 0) {" << endl <<
+      indent() << "  throw new TApplicationException(\"No implementation for '" << tfunction->get_name() << "'.\");" << endl <<
+      indent() << "} else {" << endl;
+
+    indent_up();
+
+    string return_parameter = "_return";
+    t_type* returntype = tfunction->get_returntype();
+    if (!returntype->is_void() && !is_complex_type(returntype)) {
+      f_delegator <<
+        indent() << type_name(returntype) << " _return;" << endl;
+    } else if (returntype->is_list()) {
+      f_delegator <<
+        indent() << "std::vector<void*> _out;" << endl;
+      return_parameter = "_out";
+    }
+
+    f_delegator << endl <<
+      indent() << tfunction->get_name() << "_(";
+
+    first = true;
+    if (!returntype->is_void()) {
+      if (is_complex_type(returntype)) {
+        f_delegator << "reinterpret_cast<" << type_name_c(tfunction->get_returntype(), false, true) << ">(" << return_parameter << ")";
+      } else {
+        f_delegator << return_parameter;
+      }
+      first = false;
+    }
+    for (arg_iter = arguments.begin(); arg_iter != arguments.end(); ++arg_iter) {
+      if (!first) {
+        f_delegator << ", ";
+      } else {
+        first = false;
+      }
+
+      if (is_complex_type((*arg_iter)->get_type())) {
+        if ((*arg_iter)->get_type()->is_list()) {
+          f_delegator << "wrap_vector(" << (*arg_iter)->get_name() << ")";
+        } else {
+          f_delegator << "reinterpret_cast<" << type_name_c((*arg_iter)->get_type(), false, false) << ">(" << (*arg_iter)->get_name() << ")";
+        }
+      } else {
+        f_delegator <<
+          (*arg_iter)->get_name();
+      }
+    }
+    
+    f_delegator << ");" << endl << endl;
+
+    if (!returntype->is_void() && !is_complex_type(returntype)) {
+      f_delegator <<
+        indent() << "return _return;" << endl;
+    } else if (returntype->is_list()) {
+      t_type *element_type = ((t_list*) returntype)->get_elem_type();
+
+      f_delegator <<
+        indent() << "_return = implode<" << type_name(element_type) << ">(" + return_parameter + ");" << endl;
+    }
+
+    indent_down();
+
+    f_delegator <<
+      indent() << "}" << endl; 
+    indent_down();
+
+    f_delegator <<
+      indent() << "}" << endl <<
+      endl;
+  }
+  f_delegator_h <<
+    endl;
+
+  for (f_iter = functions.begin(); f_iter != functions.end(); ++f_iter) {
+    f_delegator <<
+      indent() << "void set_" << (*f_iter)->get_name() << "_callback(" << (*f_iter)->get_name() << "_callback callback) {" << endl <<
+      indent() << "  " << (*f_iter)->get_name() << "_ = callback;" << endl <<
+      indent() << "}" << endl <<
+      endl;
+  }
+
+  indent_down();
+  f_delegator <<
+    " private:" << endl;
+
+  indent_up();
+
+  for (f_iter = functions.begin(); f_iter != functions.end(); ++f_iter) {
+    f_delegator <<
+      indent() << (*f_iter)->get_name() << "_callback " << (*f_iter)->get_name() << "_;" << endl;
+  }
+
+  indent_down();
+
+  f_delegator <<
+    "};" << endl <<
+    endl;
+
+  f_delegator_h <<
+    svcname << "_handle create_" << svcname << "_delegator();" << endl;
+
+  f_delegator <<
+    "extern \"C\" " << svcname << "_handle create_" << svcname << "_delegator() {" << endl <<
+    "  return *reinterpret_cast<struct " << svcname << "_delegator*>(" << "new " << svcname << "Delegator());" << endl <<
+    "}" << endl <<
+    endl;
+
+  for (f_iter = functions.begin(); f_iter != functions.end(); ++f_iter) {
+    f_delegator_h <<
+      "void set_" << svcname << "_" << (*f_iter)->get_name() << "_callback(" << svcname << "_handle, " << (*f_iter)->get_name() << "_callback);" << endl;
+
+    f_delegator <<
+      "extern \"C\" void set_" << svcname << "_" << (*f_iter)->get_name() << "_callback(" << svcname << "_handle handle, " << (*f_iter)->get_name() << "_callback callback) {" << endl <<
+      "  reinterpret_cast<" << svcname << "Delegator*>(&handle)->set_" << (*f_iter)->get_name() << "_callback(callback);" << endl <<
+      "}" << endl <<
+      endl;
+  }
+
+  f_delegator_h <<
+    "#ifdef __cplusplus" << endl <<
+    "}" << endl <<
+    "#endif" << endl <<
+    endl;
+
+  // Close the files
+  f_delegator.close();
+  f_delegator_h.close();
+}
+
+/**
  * Deserializes a field of any type.
  */
 void t_cpp_generator::generate_deserialize_field(ofstream& out,
@@ -4407,6 +4748,89 @@ string t_cpp_generator::base_type_name(t_base_type::t_base tbase) {
     return "double";
   default:
     throw "compiler error: no C++ base type name for base type " + t_base_type::t_base_name(tbase);
+  }
+}
+
+/**
+ * Returns a C type name
+ *
+ * @param ttype The type
+ * @return String of the type name, i.e. int
+ */
+string t_cpp_generator::type_name_c(t_type* ttype, bool in_type, bool in_return) {
+  if (ttype->is_base_type()) {
+    return base_type_name_c(((t_base_type*)ttype)->get_base(), in_type, in_return);
+  }
+  else if (ttype->is_container()) {
+    if (ttype->is_map()) {
+      t_map* tmap = (t_map*) ttype;
+      return "map_" + type_name_c(tmap->get_key_type(), true, false) + "_"
+        + type_name_c(tmap->get_val_type(), true, false);
+    } else if (ttype->is_set()) {
+      t_set* tset = (t_set*) ttype;
+      return "set_" + type_name_c(tset->get_elem_type(), true, false);
+    } else if (ttype->is_list()) {
+      t_list* tlist = (t_list*) ttype;
+      return (in_return ? string("") : string("const ")) +
+        "struct thrift_list &";
+    }
+  }
+  else {
+    return ttype->get_name();
+  }
+
+  throw "compiler error: no C type name";
+}
+
+/**
+ * Returns the C type that corresponds to the thrift type.
+ *
+ * @param tbase The base type
+ * @return Explicit C type
+ */
+string t_cpp_generator::base_type_name_c(t_base_type::t_base tbase, bool in_type, bool in_return) {
+  string retref = (in_return ? "&" : "");
+  string parconst = (in_return ? "" : "const ");
+
+  switch (tbase) {
+  case t_base_type::TYPE_VOID:
+    return "void";
+  case t_base_type::TYPE_STRING:
+    if (in_type) {
+      return "string";
+    } else {
+      return parconst + "struct thrift_str &";
+    }
+  case t_base_type::TYPE_BOOL:
+    return "bool";
+  case t_base_type::TYPE_BYTE:
+    if (in_type) {
+      return "i8";
+    } else {
+      return "int8_t" + retref;
+    }
+  case t_base_type::TYPE_I16:
+    if (in_type) {
+      return "i16";
+    } else {
+      return "int16_t" + retref;
+    }
+  case t_base_type::TYPE_I32:
+    if (in_type) {
+      return "i32";
+    } else {
+      return "int32_t" + retref;
+    }
+  case t_base_type::TYPE_I64:
+    if (in_type) {
+      return "i64";
+    } else {
+      return "int64_t" + retref;
+    }
+  case t_base_type::TYPE_DOUBLE:
+    return "double" + retref;
+  default:
+    throw "compiler error: no C base type name for base type " + t_base_type::t_base_name(tbase);
   }
 }
 
