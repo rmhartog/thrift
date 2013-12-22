@@ -4078,7 +4078,7 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
     endl;
 
   f_delegator_h <<
-    "#include \"" << get_include_prefix(*get_program()) << svcname << "_types_c.h\"" << endl <<
+    "#include \"" << get_include_prefix(*get_program()) << program_name_ << "_types_c.h\"" << endl <<
     endl <<
     "#ifdef __cplusplus" << endl <<
     "extern \"C\" {" << endl <<
