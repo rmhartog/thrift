@@ -85,7 +85,9 @@ libthrift_la_SOURCES = src/thrift/Thrift.cpp \
                        src/thrift/server/TThreadPoolServer.cpp \
                        src/thrift/server/TThreadedServer.cpp \
                        src/thrift/async/TAsyncChannel.cpp \
-                       src/thrift/processor/PeekProcessor.cpp
+                       src/thrift/processor/PeekProcessor.cpp \
+                       src/thrift/externc/TThriftList.cpp \
+                       src/thrift/externc/TThriftString.cpp
 
 if WITH_BOOSTTHREADS
 libthrift_la_SOURCES += src/thrift/concurrency/BoostThreadFactory.cpp \
@@ -221,6 +223,13 @@ include_qtdir = $(include_thriftdir)/qt
 include_qt_HEADERS = \
                   src/thrift/qt/TQIODeviceTransport.h \
                   src/thrift/qt/TQTcpServer.h
+
+include_externcdir = $(include_thriftdir)/externc
+include_externc_HEADERS = \
+                  src/thrift/externc/TThriftList.h \
+                  src/thrift/externc/TThriftList_api.h \
+                  src/thrift/externc/TThriftString_api.h \
+                  src/thrift/externc/TExternal.h
 
 THRIFT = $(top_builddir)/compiler/cpp/thrift
 
