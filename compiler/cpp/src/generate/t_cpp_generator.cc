@@ -422,6 +422,7 @@ void t_cpp_generator::init_generator() {
 
     f_types_c_h_ <<
       "#include <thrift/externc/TThriftList_api.h>" << endl <<
+      "#include <thrift/externc/TThriftString_api.h>" << endl <<
       endl <<
       "#ifndef " << program_name_ << "_TYPES_C_H" << endl <<
       "#define " << program_name_ << "_TYPES_C_H" << endl <<
@@ -4904,7 +4905,7 @@ string t_cpp_generator::type_name_c(t_type* ttype, bool in_type, bool in_return,
  */
 string t_cpp_generator::base_type_name_c(t_base_type::t_base tbase, bool in_type, bool in_return, bool no_ref) {
   string retref = (!no_ref && in_return ? "&" : "");
-  string parconst = (in_return ? "" : "const ");
+  string parconst = (in_return ? "" : "_const");
 
   switch (tbase) {
   case t_base_type::TYPE_VOID:
@@ -4913,7 +4914,7 @@ string t_cpp_generator::base_type_name_c(t_base_type::t_base tbase, bool in_type
     if (in_type) {
       return "string";
     } else {
-      return parconst + "struct thrift_str*";
+      return "thrift_string" + parconst + "_handle";
     }
   case t_base_type::TYPE_BOOL:
     return "bool";
