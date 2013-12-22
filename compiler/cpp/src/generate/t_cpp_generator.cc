@@ -4881,7 +4881,6 @@ string t_cpp_generator::type_name_c(t_type* ttype, bool in_type, bool in_return,
       t_set* tset = (t_set*) ttype;
       return "set_" + type_name_c(tset->get_elem_type(), true, false, false);
     } else if (ttype->is_list()) {
-      t_list* tlist = (t_list*) ttype;
       return (in_return ? string("") : string("const ")) +
         "thrift_list_handle";
     }
