@@ -4104,7 +4104,19 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
     " public:" << endl;
   indent_up();
   f_delegator <<
-    indent() << svcname << "Delegator() {" << endl <<
+    indent() << svcname << "Delegator() : ";
+  
+  bool first = true;
+  for (f_iter = functions.begin(); f_iter != functions.end(); ++f_iter) {
+    if (!first) {
+      f_delegator << ", ";
+    } else {
+      first = false;
+    }
+    f_delegator << (*f_iter)->get_name() << "_(0)";
+  }
+
+  f_delegator << "{" << endl <<
     indent() << "}" << endl <<
     endl;
 
@@ -4116,7 +4128,7 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
     f_delegator_h <<
       "typedef void (*" << tfunction->get_name() << "_callback)(";
 
-    bool first = true;
+    first = true;
     if (!tfunction->get_returntype()->is_void()) {
       f_delegator_h <<
         type_name_c(tfunction->get_returntype(), false, true);
