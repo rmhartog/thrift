@@ -1,6 +1,6 @@
 #include <thrift/thrift-config.h>
 
-#include "thrift/TBufPairServer.h"
+#include <thrift/transport/TBufPairServer.h>
 #include <boost/shared_ptr.hpp>
 
 namespace apache { namespace thrift { namespace transport {

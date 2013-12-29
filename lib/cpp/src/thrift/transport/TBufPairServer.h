@@ -2,7 +2,7 @@
 #define _THRIFT_TRANSPORT_TBUFPAIRSERVER_H_ 1
 
 #include <thrift/transport/TServerTransport.h>
-#include "thrift/TBufPairTransport.h"
+#include <thrift/transport/TBufPairTransport.h>
 #include <thrift/cxxfunctional.h>
 #include <boost/shared_ptr.hpp>
 #include <deque>

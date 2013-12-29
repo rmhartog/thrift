@@ -87,7 +87,8 @@ libthrift_la_SOURCES = src/thrift/Thrift.cpp \
                        src/thrift/async/TAsyncChannel.cpp \
                        src/thrift/processor/PeekProcessor.cpp \
                        src/thrift/externc/TThriftList.cpp \
-                       src/thrift/externc/TThriftString.cpp
+                       src/thrift/externc/TThriftString.cpp \
+                       src/thrift/externc/TInMemoryServer.cpp
 
 if WITH_BOOSTTHREADS
 libthrift_la_SOURCES += src/thrift/concurrency/BoostThreadFactory.cpp \
@@ -229,7 +230,8 @@ include_externc_HEADERS = \
                   src/thrift/externc/TThriftList.h \
                   src/thrift/externc/TThriftList_api.h \
                   src/thrift/externc/TThriftString_api.h \
-                  src/thrift/externc/TExternal.h
+                  src/thrift/externc/TExternal.h \
+                  src/thrift/externc/TInMemoryServer.h
 
 THRIFT = $(top_builddir)/compiler/cpp/thrift
 
