@@ -20,7 +20,7 @@ void TBufPairServer::listen() {
 
 shared_ptr<TTransport> TBufPairServer::acceptImpl() {
   if (messages.empty()) {
-    throw new TTransportException("No messages available.");
+    throw std::string("No messages available.");
   }
   
   shared_ptr<TBufPairTransport> top = messages.back();

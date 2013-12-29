@@ -1,5 +1,6 @@
 #include <thrift/externc/TInMemoryServer.h>
 #include <thrift/externc/TInMemoryServer_api.h>
+#include <thrift/transport/TTransportException.h>
 
 using namespace ::apache::thrift::externc;
 
@@ -26,10 +27,10 @@ extern "C" int run_thrift_server(thrift_server_handle handle) {
   } else {
     try {
       reinterpret_cast<TInMemoryServer*>(handle)->serve();
-    } catch(const std::exception* x) {
+    } catch(const std::exception* e) {
       return -2;
     } catch(const std::exception& x) {
-      return -2;
+      return -3;
     }
     return 0;
   }
