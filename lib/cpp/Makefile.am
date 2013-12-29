@@ -80,6 +80,7 @@ libthrift_la_SOURCES = src/thrift/Thrift.cpp \
                        src/thrift/transport/TSSLServerSocket.cpp \
                        src/thrift/transport/TTransportUtils.cpp \
                        src/thrift/transport/TBufferTransports.cpp \
+                       src/thrift/transport/TBufPairServer.cpp \
                        src/thrift/server/TServer.cpp \
                        src/thrift/server/TSimpleServer.cpp \
                        src/thrift/server/TThreadPoolServer.cpp \
@@ -194,7 +195,8 @@ include_transport_HEADERS = \
                          src/thrift/transport/TTransportUtils.h \
                          src/thrift/transport/TBufferTransports.h \
                          src/thrift/transport/TShortReadTransport.h \
-                         src/thrift/transport/TZlibTransport.h
+                         src/thrift/transport/TZlibTransport.h \
+                         src/thrift/transport/TBufPairServer.h
 
 include_serverdir = $(include_thriftdir)/server
 include_server_HEADERS = \
@@ -231,7 +233,9 @@ include_externc_HEADERS = \
                   src/thrift/externc/TThriftList_api.h \
                   src/thrift/externc/TThriftString_api.h \
                   src/thrift/externc/TExternal.h \
-                  src/thrift/externc/TInMemoryServer.h
+                  src/thrift/externc/TInMemoryServer.h \
+                  src/thrift/externc/TInMemoryServer_api.h \
+                  src/thrift/externc/TProcessor_api.h
 
 THRIFT = $(top_builddir)/compiler/cpp/thrift
 

@@ -4078,6 +4078,7 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
     endl;
 
   f_delegator_h <<
+    "#include <thrift/externc/TProcessor_api.h>" << endl <<
     "#include \"" << get_include_prefix(*get_program()) << program_name_ << "_types_c.h\"" << endl <<
     endl <<
     "#ifdef __cplusplus" << endl <<
@@ -4086,7 +4087,7 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
     endl;
 
   f_delegator_h <<
-    "typedef struct " << svcname << "_delegator& " << svcname << "_handle;" << endl <<
+    "typedef struct _" << svcname << "_delegator* " << svcname << "_handle;" << endl <<
     endl;
 
   // the following code would not compile:
@@ -4257,7 +4258,16 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
 
   f_delegator <<
     "extern \"C\" " << svcname << "_handle create_" << svcname << "_delegator() {" << endl <<
-    "  return *reinterpret_cast<struct " << svcname << "_delegator*>(" << "new " << svcname << "Delegator());" << endl <<
+    "  return reinterpret_cast<" << svcname << "_handle>(new " << svcname << "Delegator());" << endl <<
+    "}" << endl <<
+    endl;
+
+  f_delegator_h <<
+    "thrift_processor_handle create_" << svcname << "_processor(" << svcname << "_handle);" << endl;
+
+  f_delegator <<
+    "extern \"C\" thrift_processor_handle create_" << svcname << "_processor(" << svcname << "_handle handle) {" << endl <<
+    "  return reinterpret_cast<thrift_processor_handle>(new " << svcname << "Processor(shared_ptr<" << svcname << "If>(reinterpret_cast<" << svcname << "If*>(handle))));" << endl <<
     "}" << endl <<
     endl;
 
