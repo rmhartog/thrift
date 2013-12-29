@@ -4279,7 +4279,7 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
 
   f_delegator <<
     "extern \"C\" thrift_processor_handle create_" << svcname << "_processor(" << svcname << "_handle handle) {" << endl <<
-    "  " << svcname << "Delegator *delegator = reinterpret_cast<" << svcname << "If*>(handle);" << endl <<
+    "  " << svcname << "Delegator *delegator = reinterpret_cast<" << svcname << "Delegator*>(handle);" << endl <<
     "  return reinterpret_cast<thrift_processor_handle>(new " << svcname << "Processor(shared_ptr<" << svcname << "If>(static_cast<" << svcname << "If*>(delegator))));" << endl <<
     "}" << endl <<
     endl;
