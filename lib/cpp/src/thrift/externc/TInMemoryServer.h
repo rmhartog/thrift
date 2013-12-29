@@ -33,6 +33,18 @@ using ::boost::static_pointer_cast;
 
 namespace apache { namespace thrift { namespace externc {
 
+class TMemoryMessage {
+ public:
+  TMemoryMessage() : pair_(new TBufPairTransport()) {}
+
+  ~TMemoryMessage() {}
+
+  boost::shared_ptr<TBufPairTransport> getPair() { return pair_; }
+
+ private:
+  boost::shared_ptr<TBufPairTransport> pair_;
+};
+
 class TMuxerOwner {
  public:
   TMuxerOwner() : muxer_(new TMultiplexedProcessor()) {}
@@ -56,6 +68,8 @@ class TInMemoryServer : public TMuxerOwner, public TSimpleServer {
   ~TInMemoryServer() {}
 
   void registerProcessor(const char *, shared_ptr<TProcessor>);
+
+  void addMessage(shared_ptr<TBufPairTransport>);
 
  protected:
   boost::shared_ptr<TBufPairServer> buffer_;

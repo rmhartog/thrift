@@ -1,4 +1,4 @@
-#include "thrift/TBufPairTransport.h"
+#include <thrift/transport/TBufPairTransport.h>
 
 namespace apache { namespace thrift { namespace transport {
 

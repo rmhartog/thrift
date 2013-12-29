@@ -29,10 +29,17 @@ extern "C" {
 typedef struct _thrift_server_handle*		thrift_server_handle;
 typedef const struct _thrift_server_handle*	thrift_server_const_handle;
 
+typedef struct _thrift_message_handle*		thrift_message_handle;
+
 int create_thrift_server(thrift_server_handle *);
+int run_thrift_server(thrift_server_handle);
 int destroy_thrift_server(thrift_server_handle);
 
 int register_thrift_server_processor(thrift_server_handle, const char *, thrift_processor_handle);
+
+int write_thrift_server_message(thrift_message_handle *, thrift_server_handle, const unsigned char *, unsigned int);
+int read_thrift_server_message(thrift_message_handle, unsigned char *, unsigned int);
+int close_thrift_server_message(thrift_message_handle);
 
 #ifdef __cplusplus
 }
