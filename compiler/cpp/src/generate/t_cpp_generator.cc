@@ -4106,6 +4106,8 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
   f_delegator <<
     indent() << svcname << "Delegator() : ";
   
+  vector<t_function*> functions = tservice->get_functions();
+  vector<t_function*>::iterator f_iter;
   bool first = true;
   for (f_iter = functions.begin(); f_iter != functions.end(); ++f_iter) {
     if (!first) {
@@ -4120,8 +4122,6 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
     indent() << "}" << endl <<
     endl;
 
-  vector<t_function*> functions = tservice->get_functions();
-  vector<t_function*>::iterator f_iter;
   for (f_iter = functions.begin(); f_iter != functions.end(); ++f_iter) {
     t_function *tfunction = *f_iter;
 
