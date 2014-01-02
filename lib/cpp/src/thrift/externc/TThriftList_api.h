@@ -29,6 +29,8 @@ typedef struct _thrift_list_handle* thrift_list_handle;
 thrift_list_handle	create_thrift_list();
 void			destroy_thrift_list(thrift_list_handle);
 	
+void			thrift_list_add(thrift_list_handle, void*);
+void*			thrift_list_get(thrift_list_handle, unsigned int);
 unsigned int		thrift_list_size(thrift_list_handle);
 void			thrift_list_to_array(thrift_list_handle, void***, unsigned int*);
 void			thrift_list_set_array(thrift_list_handle, void**, unsigned int);

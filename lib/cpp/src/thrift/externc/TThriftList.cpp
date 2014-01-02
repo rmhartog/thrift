@@ -1,6 +1,8 @@
 #include "TThriftList.h"
 #include "TThriftList_api.h"
 
+#include <stdexcept>
+
 extern "C" thrift_list_handle create_thrift_list() {
     return reinterpret_cast<thrift_list_handle>(new std::vector<void*>());
 }
@@ -8,7 +10,22 @@ extern "C" thrift_list_handle create_thrift_list() {
 extern "C" void destroy_thrift_list(thrift_list_handle handle) {
     delete reinterpret_cast<std::vector<void*>*>(handle);
 }
-	
+
+extern "C" void thrift_list_add(thrift_list_handle handle, void *element) {
+    reinterpret_cast<std::vector<void*>*>(handle)->push_back(element);
+}
+
+extern "C" void* thrift_list_get(thrift_list_handle handle, unsigned int index) {
+    std::vector<void*>* vector = reinterpret_cast<std::vector<void*>*>(handle);
+    
+    try {
+        return vector->at(index);
+    }
+    catch (std::out_of_range& oor) {
+        return (void*) 0;
+    }
+}
+
 extern "C" unsigned int thrift_list_size(thrift_list_handle handle) {
     return reinterpret_cast<std::vector<void*>*>(handle)->size();
 }
