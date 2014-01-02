@@ -1806,6 +1806,22 @@ void t_cpp_generator::generate_c_accessors(ofstream& out, ofstream& out_h, t_str
       indent() << "}" << endl <<
         endl;
 
+    if (tfield->get_type()->is_string()) {
+      out_h <<
+        indent() << "void " << tstruct->get_name() << "_set_" <<
+          tfield->get_name() << "_from_char(" <<
+          handle_name << ", const char*);" << endl;
+
+      out <<
+        indent() << "void " << tstruct->get_name() << "_set_" <<
+          tfield->get_name() << "_from_char(" <<
+          handle_name << " handle, const char* str) {" << endl <<
+        indent() << "reinterpret_cast<" << type_name(tstruct) << "*>(handle)->__set_" <<
+          tfield->get_name() << "(std::string(str));" << endl <<
+        indent() << "}" << endl <<
+          endl;
+    }
+
     out_h << endl;
   }
   out_h << endl;
