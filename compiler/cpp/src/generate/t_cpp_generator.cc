@@ -1707,6 +1707,23 @@ void t_cpp_generator::generate_c_accessors(ofstream& out, ofstream& out_h, t_str
       const_handle_name << ";" << endl <<
       endl;
 
+  out_h <<
+    indent() << handle_name << " create_" << str_name << "();" << endl <<
+    indent() << "void destroy_" << str_name << "(" << handle_name << ");" << endl << 
+      endl;
+
+  out <<
+    indent() << handle_name << " create_" << str_name << "() {" << endl <<
+    indent() << "  return reinterpret_cast<" << handle_name << ">(new " << str_name << ");" << endl <<
+    indent() << "}" << endl <<
+      endl;
+
+  out <<
+    indent() << "void destroy_" << str_name << "(" << handle_name << " handle) {" << endl <<
+    indent() << "  delete reinterpret_cast<" << str_name << "*>(handle);" << endl <<
+    indent() << "}" << endl <<
+      endl;
+
   const vector<t_field*>& fields = tstruct->get_members();
   for (vector<t_field*>::const_iterator f_iter = fields.begin();
        f_iter != fields.end();
