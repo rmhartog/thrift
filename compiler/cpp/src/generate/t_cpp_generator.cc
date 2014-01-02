@@ -1664,7 +1664,7 @@ void t_cpp_generator::generate_struct_swap(ofstream& out, t_struct* tstruct) {
   for (vector<t_field*>::const_iterator f_iter = fields.begin();
        f_iter != fields.end();
        ++f_iter) {
-    t_field *tfield = *f_iter;
+    t_field *tfield = *f_iter;	
 
     if (tfield->get_req() != t_field::T_REQUIRED) {
       has_nonrequired_fields = true;
@@ -1708,7 +1708,7 @@ void t_cpp_generator::generate_c_accessors(ofstream& out, ofstream& out_h, t_str
       endl;
 
   out_h <<
-    indent() << handle_name << " create_" << str_name << "();" << endl <<
+    indent() << handle_name << " create_" << str_name << "(void);" << endl <<
     indent() << "void destroy_" << str_name << "(" << handle_name << ");" << endl << 
       endl;
 
@@ -4283,7 +4283,7 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
     endl;
 
   f_delegator_h <<
-    svcname << "_handle create_" << svcname << "_delegator();" << endl;
+    svcname << "_handle create_" << svcname << "_delegator(void);" << endl;
 
   f_delegator <<
     "extern \"C\" " << svcname << "_handle create_" << svcname << "_delegator() {" << endl <<
