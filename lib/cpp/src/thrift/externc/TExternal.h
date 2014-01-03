@@ -30,29 +30,29 @@
 
 template<typename R, typename T> R externalize(T i);
 
-int32_t externalize(const int32_t& i) {
+inline int32_t externalize(const int32_t& i) {
   return i;
 }
 
-template<typename R, typename T>
+inline template<typename R, typename T>
 typename enable_if<is_same<R, T>, R>::type internalize(T& i) {
   return i;
 }
 
-thrift_string_const_handle externalize(const std::string *in) {
+inline thrift_string_const_handle externalize(const std::string *in) {
   return reinterpret_cast<thrift_string_const_handle>(in);
 }
 
-template<typename R, typename T>
+inline template<typename R, typename T>
 std::string internalize(thrift_string_const_handle in) {
   return std::string(*reinterpret_cast<const std::string*>(in));
 }
 
-template<typename E> thrift_list_handle externalize(const std::vector<E>& vector) {
+inline template<typename E> thrift_list_handle externalize(const std::vector<E>& vector) {
   return wrap_vector(vector);
 }
 
-template<typename R, typename T>
+inline template<typename R, typename T>
 typename enable_if<is_vector<R>, R>::type internalize(thrift_list_handle const in) {
   return implode<typename R::value_type>(*reinterpret_cast<std::vector<void*>*>(in));
 }
