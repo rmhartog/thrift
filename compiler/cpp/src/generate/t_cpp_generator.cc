@@ -4191,7 +4191,7 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
 
     f_delegator <<
       indent() << "if (" << tfunction->get_name() << "_" << " == 0) {" << endl <<
-      indent() << "  throw new TApplicationException(\"No implementation for '" << tfunction->get_name() << "'.\");" << endl <<
+      indent() << "  throw TApplicationException(\"No implementation for '" << tfunction->get_name() << "'.\");" << endl <<
       indent() << "} else {" << endl;
 
     indent_up();
