@@ -4159,7 +4159,7 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
     t_function *tfunction = *f_iter;
 
     f_delegator_h <<
-      "typedef void (*" << tfunction->get_name() << "_callback)(";
+      "typedef void (*" << svcname << "_" << tfunction->get_name() << "_callback)(";
 
     first = true;
     if (!tfunction->get_returntype()->is_void()) {
@@ -4275,7 +4275,7 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
 
   for (f_iter = functions.begin(); f_iter != functions.end(); ++f_iter) {
     f_delegator <<
-      indent() << "void set_" << (*f_iter)->get_name() << "_callback(" << (*f_iter)->get_name() << "_callback callback) {" << endl <<
+      indent() << "void set_" << (*f_iter)->get_name() << "_callback(" << svcname << "_" << (*f_iter)->get_name() << "_callback callback) {" << endl <<
       indent() << "  " << (*f_iter)->get_name() << "_ = callback;" << endl <<
       indent() << "}" << endl <<
       endl;
@@ -4289,7 +4289,7 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
 
   for (f_iter = functions.begin(); f_iter != functions.end(); ++f_iter) {
     f_delegator <<
-      indent() << (*f_iter)->get_name() << "_callback " << (*f_iter)->get_name() << "_;" << endl;
+      indent() << svcname << "_" << (*f_iter)->get_name() << "_callback " << (*f_iter)->get_name() << "_;" << endl;
   }
 
   indent_down();
@@ -4319,10 +4319,10 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
 
   for (f_iter = functions.begin(); f_iter != functions.end(); ++f_iter) {
     f_delegator_h <<
-      "void set_" << svcname << "_" << (*f_iter)->get_name() << "_callback(" << svcname << "_handle, " << (*f_iter)->get_name() << "_callback);" << endl;
+      "void set_" << svcname << "_" << (*f_iter)->get_name() << "_callback(" << svcname << "_handle, " << svcname << "_" << (*f_iter)->get_name() << "_callback);" << endl;
 
     f_delegator <<
-      "extern \"C\" void set_" << svcname << "_" << (*f_iter)->get_name() << "_callback(" << svcname << "_handle handle, " << (*f_iter)->get_name() << "_callback callback) {" << endl <<
+      "extern \"C\" void set_" << svcname << "_" << (*f_iter)->get_name() << "_callback(" << svcname << "_handle handle, " << svcname << "_" << (*f_iter)->get_name() << "_callback callback) {" << endl <<
       "  reinterpret_cast<" << svcname << "Delegator*>(handle)->set_" << (*f_iter)->get_name() << "_callback(callback);" << endl <<
       "}" << endl <<
       endl;
