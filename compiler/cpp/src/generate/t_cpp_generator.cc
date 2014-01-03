@@ -1744,7 +1744,7 @@ void t_cpp_generator::generate_c_accessors(ofstream& out, ofstream& out_h, t_str
           const_handle_name << " handle) {" << endl;
 
       out <<
-        indent() << "  return reinterpret_cast<const " << type_name(tstruct) << "&>(handle).__isset." <<
+        indent() << "  return reinterpret_cast<const " << type_name(tstruct) << "*>(handle)->__isset." <<
           tfield->get_name() << ";" << endl;
 
       out <<
@@ -4181,10 +4181,6 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
       f_delegator_h << 
         type_name_c((*arg_iter)->get_type(), false, false);
     }
-
-//if (!tfunction->get_returntype()->is_void()) {
-//  ret_arg = ", const " + type_name(tfunction->get_returntype()) +
-//  "& _return";
 
     f_delegator_h <<
       ");" << endl;
