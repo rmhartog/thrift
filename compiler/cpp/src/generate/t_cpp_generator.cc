@@ -110,6 +110,9 @@ class t_cpp_generator : public t_oop_generator {
   }
   void generate_xception(t_struct* txception) {
     generate_cpp_struct(txception, true);
+    if (gen_extern_c_) {
+      generate_c_struct(txception, true);
+    }
   }
   void generate_cpp_struct(t_struct* tstruct, bool is_exception);
   void generate_c_struct(t_struct* tstruct, bool is_exception);
@@ -631,6 +634,12 @@ void t_cpp_generator::generate_enum(t_enum* tenum) {
   }
   f_types_ <<
     indent() << "enum " << enum_name;
+
+  if (gen_extern_c_) {
+    f_types_c_h_ << "enum " << tenum->get_name() << "_enum" << endl;
+    generate_enum_constant_list(f_types_c_h_, constants, "", "", true);
+    f_types_c_h_ << endl;
+  }
 
   generate_enum_constant_list(f_types_, constants, "", "", true);
 
@@ -1771,6 +1780,11 @@ void t_cpp_generator::generate_c_accessors(ofstream& out, ofstream& out_h, t_str
       indent() << "  return externalize(" <<
         "&reinterpret_cast<const " << type_name(tstruct) << "*>(handle)->" <<
         tfield->get_name() << ");" << endl;
+    } else if (tfield->get_type()->is_enum()) {
+      out <<
+        indent() << "  return static_cast<" << type_name_c(tfield->get_type()) << ">(" <<
+          "reinterpret_cast<const " << type_name(tstruct) << "*>(handle)->" <<
+          tfield->get_name() << ");" << endl;
     } else {
       out <<
         indent() << "  return externalize(" <<
@@ -1798,9 +1812,15 @@ void t_cpp_generator::generate_c_accessors(ofstream& out, ofstream& out_h, t_str
         type_name_c(tfield->get_type(), false, false) <<
         " value) {" << endl;
 
-    out <<
-      indent() << "  reinterpret_cast<" << type_name(tstruct) << "*>(handle)->__set_" <<
-      tfield->get_name() << "(internalize<" << type_name(tfield->get_type()) << ", " << type_name_c(tfield->get_type(), false, true, true) << ">(value));" << endl;
+    if (tfield->get_type()->is_enum()) {
+      out <<
+        indent() << "  reinterpret_cast<" << type_name(tstruct) << "*>(handle)->__set_" <<
+        tfield->get_name() << "(static_cast<" << type_name(tfield->get_type()) << ">(value));" << endl;
+    } else {
+      out <<
+        indent() << "  reinterpret_cast<" << type_name(tstruct) << "*>(handle)->__set_" <<
+        tfield->get_name() << "(internalize<" << type_name(tfield->get_type()) << ", " << type_name_c(tfield->get_type(), false, true, true) << ">(value));" << endl;
+    }
 
     out <<
       indent() << "}" << endl <<
@@ -4238,6 +4258,8 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
         } else {
           f_delegator << "reinterpret_cast<" << type_name_c((*arg_iter)->get_type(), false, false) << ">(&" << (*arg_iter)->get_name() << ")";
         }
+      } else if ((*arg_iter)->get_type()->is_enum()) {
+        f_delegator << "static_cast<" << type_name_c((*arg_iter)->get_type(), false, false) << ">(" << (*arg_iter)->get_name() << ")";
       } else {
         f_delegator <<
           (*arg_iter)->get_name();
@@ -4936,6 +4958,9 @@ string t_cpp_generator::type_name_c(t_type* ttype, bool in_type, bool in_return,
       return (in_return ? string("") : string("const ")) +
         "thrift_list_handle";
     }
+  }
+  else if (ttype->is_enum()) {
+    return in_return ? string("") : string("const ") + "enum " + ttype->get_name() + "_enum";
   }
   else {
     if (in_type) {
