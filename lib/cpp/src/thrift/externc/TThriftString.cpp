@@ -6,6 +6,7 @@
 #include <string>
 
 TThriftString::TThriftString() : str(new std::string) {}
+TThriftString::TThriftString(std::string *s) : str(s) {}
 TThriftString::~TThriftString() {
     delete str;
 }
