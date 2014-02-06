@@ -4133,6 +4133,7 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
     "#include \"" << get_include_prefix(*get_program()) << svcname << ".h\"" << endl <<
     "#include \"" << get_include_prefix(*get_program()) << svcname << "_delegator.h\"" << endl <<
     "#include <thrift/externc/TContext.h>" << endl <<
+    "#include <thrift/externc/TResult.h>" << endl <<
     "#include <thrift/externc/TThriftList.h>" << endl <<
     "#include <thrift/protocol/TBinaryProtocol.h>" << endl <<
     "#include <thrift/server/TSimpleServer.h>" << endl <<
@@ -4149,10 +4150,7 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
 
   f_delegator_h <<
     "#include <thrift/externc/TProcessor_api.h>" << endl <<
-    "#include <thrift/externc/TContext.h>" << endl <<
-    "#include <thrift/externc/TResult.h>" << endl <<
     "#include <thrift/externc/TResult_api.h>" << endl <<
-    "#include <thrift/externc/TContext.h>" << endl <<
     "#include <thrift/externc/TContext_api.h>" << endl <<
     "#include \"" << get_include_prefix(*get_program()) << program_name_ << "_types_c.h\"" << endl <<
     endl <<
