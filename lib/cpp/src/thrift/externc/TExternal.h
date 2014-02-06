@@ -56,11 +56,12 @@ std::string internalize(thrift_string_const_handle in) {
   return std::string(*reinterpret_cast<const TThriftString*>(in)->getString());
 }
 
-template<typename E> inline thrift_list_handle externalize(thrift_context_handle ctx, const std::vector<E>& vector) {
+template<typename E> inline
+thrift_list_handle externalize(thrift_context_handle ctx, const std::vector<E>& vector) {
   return explode(ctx, vector);
 }
 
-template<typename E> inline thrift_list_handle externalize(thrift_context_handle ctx, std::vector<void*>& vector) {
+inline thrift_list_handle externalize(thrift_context_handle ctx, std::vector<void*>& vector) {
   TThriftList *list = new TThriftList(vector);
   reinterpret_cast<TContext*>(ctx)->newObject(list);
   return reinterpret_cast<thrift_list_handle>(list);
