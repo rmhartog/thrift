@@ -21,10 +21,10 @@
 
 TContext::TContext() {}
 TContext::~TContext() {
-    std::vector<TDestroyable*>::iterator destroy;
-    for (destroy = destroyables.begin(); destroy != destroyables.end(); ++destroy) {
-        delete *destroy;
-    }
+    //std::vector<TDestroyable*>::iterator destroy;
+    //for (destroy = destroyables.begin(); destroy != destroyables.end(); ++destroy) {
+    //    delete *destroy;
+    //}
 }
 
 void TContext::newObject(TDestroyable *obj) {

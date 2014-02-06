@@ -4232,7 +4232,7 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
 
     f_delegator <<
       indent() << "TContext _ctx;" << endl << 
-      indent() << "thrift_context_handle ctx = reinterpret_cast<thrift_context_handle>(&ctx);" << endl <<
+      indent() << "thrift_context_handle ctx = reinterpret_cast<thrift_context_handle>(&_ctx);" << endl <<
       endl;
 
     f_delegator <<
@@ -4259,8 +4259,10 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
 
     first = true;
     if (!returntype->is_void()) {
-      if (is_complex_type(returntype)) {
-        f_delegator << "reinterpret_cast<" << type_name_c(tfunction->get_returntype(), false, true) << ">(&" << return_parameter << ")";
+      if (returntype->is_list()) {
+        f_delegator << "externalize(ctx, " << return_parameter << ")";
+      } else if (is_complex_type(returntype)) {
+        f_delegator << "reinterpret_cast<" << type_name_c(returntype, false, true) << ">(&" << return_parameter << ")";
       } else {
         f_delegator << return_parameter;
       }
