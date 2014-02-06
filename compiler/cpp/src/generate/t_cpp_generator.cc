@@ -1782,18 +1782,18 @@ void t_cpp_generator::generate_c_accessors(ofstream& out, ofstream& out_h, t_str
     out_h <<
       indent() << type_name_c(tfield->get_type(), false, false, true) << " " <<
         tstruct->get_name() << "_get_" <<
-        tfield->get_name() << "(" <<
+        tfield->get_name() << "(thrift_context_handle, " <<
         const_handle_name << ");" << endl;
 
     out <<
       indent() << type_name_c(tfield->get_type(), false, false, true) << " " <<
         tstruct->get_name() << "_get_" <<
-        tfield->get_name() << "(" <<
+        tfield->get_name() << "(thrift_context_handle ctx, " <<
         const_handle_name << " handle) {" << endl;
 
     if (tfield->get_type()->is_string()) {
      out <<
-      indent() << "  return externalize(" <<
+      indent() << "  return externalize(ctx, " <<
         "&reinterpret_cast<const " << type_name(tstruct) << "*>(handle)->" <<
         tfield->get_name() << ");" << endl;
     } else if (tfield->get_type()->is_enum()) {
@@ -1803,7 +1803,7 @@ void t_cpp_generator::generate_c_accessors(ofstream& out, ofstream& out_h, t_str
           tfield->get_name() << ");" << endl;
     } else {
       out <<
-        indent() << "  return externalize(" <<
+        indent() << "  return externalize(ctx, " <<
           "reinterpret_cast<const " << type_name(tstruct) << "*>(handle)->" <<
           tfield->get_name() << ");" << endl;
     }
@@ -4134,6 +4134,7 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
     "#include \"" << get_include_prefix(*get_program()) << svcname << "_delegator.h\"" << endl <<
     "#include <thrift/externc/TContext.h>" << endl <<
     "#include <thrift/externc/TResult.h>" << endl <<
+    "#include <thrift/externc/TExternal.h>" << endl <<
     "#include <thrift/externc/TThriftList.h>" << endl <<
     "#include <thrift/protocol/TBinaryProtocol.h>" << endl <<
     "#include <thrift/server/TSimpleServer.h>" << endl <<
@@ -4230,7 +4231,9 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
     indent_up();
 
     f_delegator <<
-      indent() << "TContext ctx;" << endl << endl;
+      indent() << "TContext _ctx;" << endl << 
+      indent() << "thrift_context_handle ctx = reinterpret_cast<thrift_context_handle>(&ctx);" << endl <<
+      endl;
 
     f_delegator <<
       indent() << "if (" << tfunction->get_name() << "_" << " == 0) {" << endl <<
@@ -4252,7 +4255,7 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
 
     f_delegator << endl <<
       indent() << "thrift_result_const_handle tresult = " << tfunction->get_name() << "_(" <<
-      "reinterpret_cast<thrift_context_handle>(&ctx), ";
+      "ctx, ";
 
     first = true;
     if (!returntype->is_void()) {
@@ -4272,7 +4275,7 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
 
       if (is_complex_type((*arg_iter)->get_type())) {
         if ((*arg_iter)->get_type()->is_list()) {
-          f_delegator << "wrap_vector(" << (*arg_iter)->get_name() << ")";
+          f_delegator << "externalize(ctx, " << (*arg_iter)->get_name() << ")";
         } else if (is_complex_type((*arg_iter)->get_type())) {
           if ((*arg_iter)->get_type()->is_string()) {
             f_delegator << "reinterpret_cast<" << type_name_c((*arg_iter)->get_type(), false, false) << ">(&" << (*arg_iter)->get_name() << ")";

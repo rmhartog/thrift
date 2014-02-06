@@ -237,6 +237,7 @@ include_externc_HEADERS = \
                   src/thrift/externc/TContext_api.h \
                   src/thrift/externc/TThriftList.h \
                   src/thrift/externc/TThriftList_api.h \
+                  src/thrift/externc/TThriftString.h \
                   src/thrift/externc/TThriftString_api.h \
                   src/thrift/externc/TExternal.h \
                   src/thrift/externc/TInMemoryServer.h \

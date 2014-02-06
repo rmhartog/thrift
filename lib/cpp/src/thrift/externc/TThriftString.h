@@ -30,6 +30,7 @@ private:
     std::string* str;
 public:
     TThriftString();
+    TThriftString(std::string*);
     virtual ~TThriftString();
 
     std::string* getString();

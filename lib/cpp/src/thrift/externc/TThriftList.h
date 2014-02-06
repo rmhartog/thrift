@@ -34,6 +34,7 @@ private:
     std::vector<void*>* vector;
 public:
     TThriftList();
+    TThriftList(std::vector<void*>&);
     virtual ~TThriftList();
 
     std::vector<void*>* getVector();
@@ -43,20 +44,14 @@ template <typename T> struct is_vector : false_type {};
 template <typename T> struct is_vector<std::vector<T> > : true_type {};
 
 template<typename T>
-thrift_list_handle wrap_vector(const std::vector<T>& v) {
-    std::vector<void*>* exploded = explode(v);
-    return reinterpret_cast<thrift_list_handle>(exploded);
-}
-
-template<typename T>
-std::vector<void*>* explode(const std::vector<T>& v) {
+thrift_list_handle explode(thrift_context_handle ctx, const std::vector<T>& v) {
     typename std::vector<T>::const_iterator it;
-    std::vector<void*>* out = new std::vector<void*>();
+    thrift_list_handle out = create_thrift_list(ctx);
 
     for (it = v.begin(); it != v.end(); it++) {
         T* val = new T;
         *val = *it;
-        out->push_back(reinterpret_cast<void*>(val));
+        thrift_list_add(out, val);
     }
 
     return out;
@@ -75,12 +70,12 @@ typename disable_if<is_vector<T>, std::vector<T> >::type implode(std::vector<voi
 }
 
 template<typename T>
-std::vector<void*>* explode(const std::vector<std::vector<T> >& v) {
+std::vector<void*>* explode(thrift_context_handle ctx, const std::vector<std::vector<T> >& v) {
     typename std::vector<std::vector<T> >::const_iterator it;
-    std::vector<void*>* out = new std::vector<void*>();
+    thrift_list_handle out = create_thrift_list(ctx);
 
     for (it = v.begin(); it != v.end(); it++) {
-        out->push_back(reinterpret_cast<void*>(explode(*it)));
+        thrift_list_add(out, explode(ctx, *it));
     }
 
     return out;
@@ -92,7 +87,7 @@ typename enable_if<is_vector<T>, std::vector<T> >::type implode(std::vector<void
     typename std::vector<T> out;
 
     for (it = v.begin(); it != v.end(); it++) {
-        out.push_back(implode<typename T::value_type>(*reinterpret_cast<std::vector<void*>*>(*it)));
+        out.push_back(implode<typename T::value_type>(*reinterpret_cast<TThriftList*>(*it)->getVector()));
     }
 
     return out;
