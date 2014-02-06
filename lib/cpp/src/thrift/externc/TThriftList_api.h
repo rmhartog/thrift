@@ -20,14 +20,16 @@
 #ifndef _THRIFT_EXTERNC_THRIFTLIST_API_H_
 #define _THRIFT_EXTERNC_THRIFTLIST_API_H_
 
+#include <thrift/externc/TContext_api.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 typedef struct _thrift_list_handle* thrift_list_handle;
 
-thrift_list_handle	create_thrift_list();
-void			destroy_thrift_list(thrift_list_handle);
+thrift_list_handle	create_thrift_list(thrift_context_handle);
+void			destroy_thrift_list(thrift_context_handle, thrift_list_handle);
 	
 void			thrift_list_add(thrift_list_handle, void*);
 void*			thrift_list_get(thrift_list_handle, unsigned int);

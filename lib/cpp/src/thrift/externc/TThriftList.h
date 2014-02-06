@@ -20,6 +20,7 @@
 #ifndef _THRIFT_EXTERNC_THRIFTLIST_H_
 #define _THRIFT_EXTERNC_THRIFTLIST_H_
 
+#include <thrift/externc/TContext.h>
 #include <thrift/externc/TThriftList_api.h>
 
 #include <vector>
@@ -27,6 +28,16 @@
 #include <boost/type_traits.hpp> 
 
 using namespace boost;
+
+class TThriftList : public TDestroyable {
+private:
+    std::vector<void*>* vector;
+public:
+    TThriftList();
+    virtual ~TThriftList();
+
+    std::vector<void*>* getVector();
+};
 
 template <typename T> struct is_vector : false_type {};
 template <typename T> struct is_vector<std::vector<T> > : true_type {};

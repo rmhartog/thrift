@@ -90,7 +90,9 @@ libthrift_la_SOURCES = src/thrift/Thrift.cpp \
                        src/thrift/processor/PeekProcessor.cpp \
                        src/thrift/externc/TThriftList.cpp \
                        src/thrift/externc/TThriftString.cpp \
-                       src/thrift/externc/TInMemoryServer.cpp
+                       src/thrift/externc/TInMemoryServer.cpp \
+                       src/thrift/externc/TResult.cpp \
+                       src/thrift/externc/TContext.cpp
 
 if WITH_BOOSTTHREADS
 libthrift_la_SOURCES += src/thrift/concurrency/BoostThreadFactory.cpp \
@@ -231,13 +233,17 @@ include_qt_HEADERS = \
 
 include_externcdir = $(include_thriftdir)/externc
 include_externc_HEADERS = \
+                  src/thrift/externc/TContext.h \
+                  src/thrift/externc/TContext_api.h \
                   src/thrift/externc/TThriftList.h \
                   src/thrift/externc/TThriftList_api.h \
                   src/thrift/externc/TThriftString_api.h \
                   src/thrift/externc/TExternal.h \
                   src/thrift/externc/TInMemoryServer.h \
                   src/thrift/externc/TInMemoryServer_api.h \
-                  src/thrift/externc/TProcessor_api.h
+                  src/thrift/externc/TProcessor_api.h \
+                  src/thrift/externc/TResult.h \
+                  src/thrift/externc/TResult_api.h
 
 THRIFT = $(top_builddir)/compiler/cpp/thrift
 

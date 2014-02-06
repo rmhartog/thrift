@@ -17,27 +17,17 @@
  * under the License.
  */
 
-#ifndef _THRIFT_EXTERNC_THRIFTSTRING_API_H_
-#define _THRIFT_EXTERNC_THRIFTSTRING_API_H_
+#include <thrift/externc/TResult.h>
+#include <thrift/externc/TResult_api.h>
 
-#include <thrift/externc/TContext_api.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef struct _thrift_str_handle* thrift_string_handle;
-typedef const struct _thrift_str_handle* thrift_string_const_handle;
-
-thrift_string_handle	create_thrift_string(thrift_context_handle);
-void			destroy_thrift_string(thrift_context_handle, thrift_string_handle);
-	
-unsigned int		thrift_string_size(thrift_string_const_handle);
-void			thrift_string_to_array(thrift_string_const_handle, char**, unsigned int*);
-void			thrift_string_set_array(thrift_string_handle, const char*, int);
-
-#ifdef __cplusplus
+extern "C" bool thrift_result_is_success(thrift_result_const_handle result) {
+    return result == THRIFT_SUCCESS;
 }
-#endif
 
-#endif
+bool thrift_result_has_exception(thrift_result_const_handle result) {
+    return !thrift_result_is_success(result);
+}
+
+TException thrift_result_get_exception(thrift_result_const_handle result) {
+    return *reinterpret_cast<const TException*>(result);
+}

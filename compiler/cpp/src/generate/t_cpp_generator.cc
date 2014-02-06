@@ -424,8 +424,10 @@ void t_cpp_generator::init_generator() {
       endl;
 
     f_types_c_h_ <<
+      "#include <thrift/externc/TContext_api.h>" << endl <<
       "#include <thrift/externc/TThriftList_api.h>" << endl <<
       "#include <thrift/externc/TThriftString_api.h>" << endl <<
+      "#include <thrift/externc/TResult_api.h>" << endl <<
       endl <<
       "#ifndef " << program_name_ << "_TYPES_C_H" << endl <<
       "#define " << program_name_ << "_TYPES_C_H" << endl <<
@@ -1717,18 +1719,32 @@ void t_cpp_generator::generate_c_accessors(ofstream& out, ofstream& out_h, t_str
       endl;
 
   out_h <<
-    indent() << handle_name << " create_" << str_name << "(void);" << endl <<
-    indent() << "void destroy_" << str_name << "(" << handle_name << ");" << endl << 
+    indent() << handle_name << " create_" << str_name << "(thrift_context_handle);" << endl <<
+    indent() << "void destroy_" << str_name << "(thrift_context_handle, " << handle_name << ");" << endl << 
       endl;
 
+  if (is_exception) {
+    out_h <<
+      indent() << "thrift_result_const_handle " << str_name << "_result(thrift_context_handle, " << handle_name << ");" << endl <<
+        endl;
+  }
+
   out <<
-    indent() << handle_name << " create_" << str_name << "() {" << endl <<
+    indent() << handle_name << " create_" << str_name << "(thrift_context_handle ctx) {" << endl <<
     indent() << "  return reinterpret_cast<" << handle_name << ">(new " << str_name << ");" << endl <<
     indent() << "}" << endl <<
       endl;
 
+  if (is_exception) {
+    out <<
+      indent() << "thrift_result_const_handle " << str_name << "_result(thrift_context_handle ctx, " << handle_name << " ex) {" << endl <<
+      indent() << "  return reinterpret_cast<thrift_result_const_handle>(ex);" << endl <<
+      indent() << "}" << endl <<
+        endl;
+  }
+
   out <<
-    indent() << "void destroy_" << str_name << "(" << handle_name << " handle) {" << endl <<
+    indent() << "void destroy_" << str_name << "(thrift_context_handle ctx, " << handle_name << " handle) {" << endl <<
     indent() << "  delete reinterpret_cast<" << str_name << "*>(handle);" << endl <<
     indent() << "}" << endl <<
       endl;
@@ -4116,6 +4132,7 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
   f_delegator <<
     "#include \"" << get_include_prefix(*get_program()) << svcname << ".h\"" << endl <<
     "#include \"" << get_include_prefix(*get_program()) << svcname << "_delegator.h\"" << endl <<
+    "#include <thrift/externc/TContext.h>" << endl <<
     "#include <thrift/externc/TThriftList.h>" << endl <<
     "#include <thrift/protocol/TBinaryProtocol.h>" << endl <<
     "#include <thrift/server/TSimpleServer.h>" << endl <<
@@ -4132,6 +4149,11 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
 
   f_delegator_h <<
     "#include <thrift/externc/TProcessor_api.h>" << endl <<
+    "#include <thrift/externc/TContext.h>" << endl <<
+    "#include <thrift/externc/TResult.h>" << endl <<
+    "#include <thrift/externc/TResult_api.h>" << endl <<
+    "#include <thrift/externc/TContext.h>" << endl <<
+    "#include <thrift/externc/TContext_api.h>" << endl <<
     "#include \"" << get_include_prefix(*get_program()) << program_name_ << "_types_c.h\"" << endl <<
     endl <<
     "#ifdef __cplusplus" << endl <<
@@ -4179,7 +4201,7 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
     t_function *tfunction = *f_iter;
 
     f_delegator_h <<
-      "typedef void (*" << svcname << "_" << tfunction->get_name() << "_callback)(";
+      "typedef thrift_result_const_handle (*" << svcname << "_" << tfunction->get_name() << "_callback)(thrift_context_handle, ";
 
     first = true;
     if (!tfunction->get_returntype()->is_void()) {
@@ -4210,6 +4232,9 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
     indent_up();
 
     f_delegator <<
+      indent() << "TContext ctx;" << endl << endl;
+
+    f_delegator <<
       indent() << "if (" << tfunction->get_name() << "_" << " == 0) {" << endl <<
       indent() << "  throw TApplicationException(\"No implementation for '" << tfunction->get_name() << "'.\");" << endl <<
       indent() << "} else {" << endl;
@@ -4228,7 +4253,8 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
     }
 
     f_delegator << endl <<
-      indent() << tfunction->get_name() << "_(";
+      indent() << "thrift_result_const_handle tresult = " << tfunction->get_name() << "_(" <<
+      "reinterpret_cast<thrift_context_handle>(&ctx), ";
 
     first = true;
     if (!returntype->is_void()) {
@@ -4268,6 +4294,10 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
     
     f_delegator << ");" << endl << endl;
 
+    f_delegator <<
+        indent() <<"if (thrift_result_is_success(tresult)) {" << endl;
+    indent_up();
+
     if (!returntype->is_void() && !is_complex_type(returntype)) {
       f_delegator <<
         indent() << "return _return;" << endl;
@@ -4277,6 +4307,22 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
       f_delegator <<
         indent() << "_return = implode<" << type_name(element_type) << ">(" + return_parameter + ");" << endl;
     }
+
+    indent_down();
+    f_delegator <<
+        indent() << "} else if (thrift_result_has_exception(tresult)) {" << endl;
+    indent_up();
+    f_delegator <<
+        indent() << "throw thrift_result_get_exception(tresult);" << endl;
+    indent_down();
+    f_delegator <<
+        indent() << "} else {" << endl;
+    indent_up();
+    f_delegator <<
+        indent() << "throw TApplicationException(\"Invalid result: no success, no exception.\");" << endl;
+    indent_down();
+    f_delegator <<
+        indent() << "}" << endl;
 
     indent_down();
 
