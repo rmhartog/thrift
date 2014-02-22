@@ -39,10 +39,10 @@ typename enable_if<is_same<R, T>, R>::type internalize(T& i) {
   return i;
 }
 
-inline thrift_string_const_handle externalize(thrift_context_handle ctx, std::string *in) {
+inline thrift_string_handle externalize(thrift_context_handle ctx, std::string *in) {
   TThriftString *str = new TThriftString(in);
   reinterpret_cast<TContext*>(ctx)->newObject(str);
-  return reinterpret_cast<thrift_string_const_handle>(str);
+  return reinterpret_cast<thrift_string_handle>(str);
 }
 
 inline thrift_string_const_handle externalize(thrift_context_handle ctx, const std::string *in) {

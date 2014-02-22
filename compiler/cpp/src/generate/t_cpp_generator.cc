@@ -4261,6 +4261,8 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
     if (!returntype->is_void()) {
       if (returntype->is_list()) {
         f_delegator << "externalize(ctx, " << return_parameter << ")";
+      } else if (returntype->is_string()) {
+        f_delegator << "externalize(ctx, &" << return_parameter << ")";
       } else if (is_complex_type(returntype)) {
         f_delegator << "reinterpret_cast<" << type_name_c(returntype, false, true) << ">(&" << return_parameter << ")";
       } else {
@@ -4278,12 +4280,8 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
       if (is_complex_type((*arg_iter)->get_type())) {
         if ((*arg_iter)->get_type()->is_list()) {
           f_delegator << "externalize(ctx, " << (*arg_iter)->get_name() << ")";
-        } else if (is_complex_type((*arg_iter)->get_type())) {
-          if ((*arg_iter)->get_type()->is_string()) {
-            f_delegator << "reinterpret_cast<" << type_name_c((*arg_iter)->get_type(), false, false) << ">(&" << (*arg_iter)->get_name() << ")";
-          } else {
-            f_delegator << "reinterpret_cast<const " << type_name_c((*arg_iter)->get_type(), false, false) << ">(&" << (*arg_iter)->get_name() << ")";
-          }
+        } else if ((*arg_iter)->get_type()->is_string()) {
+          f_delegator << "externalize(ctx, &" << (*arg_iter)->get_name() << ")";
         } else {
           f_delegator << "reinterpret_cast<" << type_name_c((*arg_iter)->get_type(), false, false) << ">(&" << (*arg_iter)->get_name() << ")";
         }
