@@ -28,14 +28,17 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-template<typename R, typename T> R externalize(T i);
-
 inline int32_t externalize(thrift_context_handle, const int32_t& i) {
   return i;
 }
 
 template<typename R, typename T> inline 
-typename enable_if<is_same<R, T>, R>::type internalize(T& i) {
+typename enable_if<is_same<R, T>, R>::type internalize(T i) {
+  return i;
+}
+
+template<typename R, typename T> inline 
+typename enable_if<is_same<R, T>, R>::type externalize(T i) {
   return i;
 }
 
