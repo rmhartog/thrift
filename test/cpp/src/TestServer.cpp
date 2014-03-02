@@ -23,6 +23,7 @@
 #include <thrift/concurrency/ThreadManager.h>
 #include <thrift/concurrency/PlatformThreadFactory.h>
 #include <thrift/protocol/TBinaryProtocol.h>
+#include <thrift/protocol/TCompactProtocol.h>
 #include <thrift/protocol/TJSONProtocol.h>
 #include <thrift/server/TSimpleServer.h>
 #include <thrift/server/TThreadedServer.h>
@@ -46,9 +47,11 @@
 #include <boost/program_options.hpp>
 
 #include <signal.h>
+#if _WIN32
+   #include <thrift/windows/TWinsockSingleton.h>
+#endif
 
 using namespace std;
-using namespace boost;
 
 using namespace apache::thrift;
 using namespace apache::thrift::concurrency;
@@ -83,7 +86,7 @@ class TestHandler : public ThriftTestIf {
   }
 
   int64_t testI64(const int64_t thing) {
-    printf("testI64(%"PRId64")\n", thing);
+    printf("testI64(%" PRId64 ")\n", thing);
     return thing;
   }
 
@@ -93,13 +96,13 @@ class TestHandler : public ThriftTestIf {
   }
 
   void testStruct(Xtruct& out, const Xtruct &thing) {
-    printf("testStruct({\"%s\", %d, %d, %"PRId64"})\n", thing.string_thing.c_str(), (int)thing.byte_thing, thing.i32_thing, thing.i64_thing);
+    printf("testStruct({\"%s\", %d, %d, %" PRId64 "})\n", thing.string_thing.c_str(), (int)thing.byte_thing, thing.i32_thing, thing.i64_thing);
     out = thing;
   }
 
   void testNest(Xtruct2& out, const Xtruct2& nest) {
     const Xtruct &thing = nest.struct_thing;
-    printf("testNest({%d, {\"%s\", %d, %d, %"PRId64"}, %d})\n", (int)nest.byte_thing, thing.string_thing.c_str(), (int)thing.byte_thing, thing.i32_thing, thing.i64_thing, nest.i32_thing);
+    printf("testNest({%d, {\"%s\", %d, %d, %" PRId64 "}, %d})\n", (int)nest.byte_thing, thing.string_thing.c_str(), (int)thing.byte_thing, thing.i32_thing, thing.i64_thing, nest.i32_thing);
     out = nest;
   }
 
@@ -173,7 +176,7 @@ class TestHandler : public ThriftTestIf {
   }
 
   UserId testTypedef(const UserId thing) {
-    printf("testTypedef(%"PRId64")\n", thing);
+    printf("testTypedef(%" PRId64 ")\n", thing);
     return thing;
   }
 
@@ -231,7 +234,7 @@ class TestHandler : public ThriftTestIf {
     printf(" = {");
     map<UserId, map<Numberz::type,Insanity> >::const_iterator i_iter;
     for (i_iter = insane.begin(); i_iter != insane.end(); ++i_iter) {
-      printf("%"PRId64" => {", i_iter->first);
+      printf("%" PRId64 " => {", i_iter->first);
       map<Numberz::type,Insanity>::const_iterator i2_iter;
       for (i2_iter = i_iter->second.begin();
            i2_iter != i_iter->second.end();
@@ -241,7 +244,7 @@ class TestHandler : public ThriftTestIf {
         map<Numberz::type, UserId>::const_iterator um;
         printf("{");
         for (um = userMap.begin(); um != userMap.end(); ++um) {
-          printf("%d => %"PRId64", ", um->first, um->second);
+          printf("%d => %" PRId64 ", ", um->first, um->second);
         }
         printf("}, ");
 
@@ -249,7 +252,7 @@ class TestHandler : public ThriftTestIf {
         vector<Xtruct>::const_iterator x;
         printf("{");
         for (x = xtructs.begin(); x != xtructs.end(); ++x) {
-          printf("{\"%s\", %d, %d, %"PRId64"}, ", x->string_thing.c_str(), (int)x->byte_thing, x->i32_thing, x->i64_thing);
+          printf("{\"%s\", %d, %d, %" PRId64 "}, ", x->string_thing.c_str(), (int)x->byte_thing, x->i32_thing, x->i64_thing);
         }
         printf("}");
 
@@ -266,7 +269,7 @@ class TestHandler : public ThriftTestIf {
     (void) arg3;
     (void) arg4;
     (void) arg5;
-    
+
     printf("testMulti()\n");
 
     hello.string_thing = "Hello2";
@@ -314,9 +317,9 @@ class TestHandler : public ThriftTestIf {
     }
   }
 
-  void testOneway(int sleepFor) {
+  void testOneway(const int32_t sleepFor) {
     printf("testOneway(%d): Sleeping...\n", sleepFor);
-    sleep(sleepFor);
+    THRIFT_SLEEP_SEC(sleepFor);
     printf("testOneway(%d): done sleeping!\n", sleepFor);
   }
 };
@@ -447,7 +450,7 @@ public:
   }
 
   virtual void testInsanity(std::tr1::function<void(std::map<UserId, std::map<Numberz::type, Insanity> >  const& _return)> cob, const Insanity& argument) {
-    std::map<UserId, std::map<Numberz::type, Insanity> > res; 
+    std::map<UserId, std::map<Numberz::type, Insanity> > res;
     _delegate->testInsanity(res, argument);
     cob(res);
  }
@@ -490,6 +493,9 @@ protected:
 
 
 int main(int argc, char **argv) {
+#if _WIN32
+  transport::TWinsockSingleton::create();
+#endif
   int port = 9090;
   bool ssl = false;
   string transport_type = "buffered";
@@ -498,34 +504,34 @@ int main(int argc, char **argv) {
   string domain_socket = "";
   size_t workers = 4;
 
- 
-  program_options::options_description desc("Allowed options");
+
+  boost::program_options::options_description desc("Allowed options");
   desc.add_options()
       ("help,h", "produce help message")
-      ("port", program_options::value<int>(&port)->default_value(port), "Port number to listen")
-	  ("domain-socket", program_options::value<string>(&domain_socket)->default_value(domain_socket),
+      ("port", boost::program_options::value<int>(&port)->default_value(port), "Port number to listen")
+	  ("domain-socket", boost::program_options::value<string>(&domain_socket)->default_value(domain_socket),
 	    "Unix Domain Socket (e.g. /tmp/ThriftTest.thrift)")
-      ("server-type", program_options::value<string>(&server_type)->default_value(server_type),
+      ("server-type", boost::program_options::value<string>(&server_type)->default_value(server_type),
         "type of server, \"simple\", \"thread-pool\", \"threaded\", or \"nonblocking\"")
-      ("transport", program_options::value<string>(&transport_type)->default_value(transport_type),
+      ("transport", boost::program_options::value<string>(&transport_type)->default_value(transport_type),
         "transport: buffered, framed, http")
-      ("protocol", program_options::value<string>(&protocol_type)->default_value(protocol_type),
-        "protocol: binary, json")
+      ("protocol", boost::program_options::value<string>(&protocol_type)->default_value(protocol_type),
+        "protocol: binary, compact, json")
 	  ("ssl", "Encrypted Transport using SSL")
 	  ("processor-events", "processor-events")
-      ("workers,n", program_options::value<size_t>(&workers)->default_value(workers),
+      ("workers,n", boost::program_options::value<size_t>(&workers)->default_value(workers),
         "Number of thread pools workers. Only valid for thread-pool server type")
   ;
 
-  program_options::variables_map vm;
-  program_options::store(program_options::parse_command_line(argc, argv, desc), vm);
-  program_options::notify(vm);    
+  boost::program_options::variables_map vm;
+  boost::program_options::store(boost::program_options::parse_command_line(argc, argv, desc), vm);
+  boost::program_options::notify(vm);
 
   if (vm.count("help")) {
       cout << desc << "\n";
       return 1;
   }
-  
+
   try {
     if (!server_type.empty()) {
       if (server_type == "simple") {
@@ -536,7 +542,7 @@ int main(int argc, char **argv) {
           throw invalid_argument("Unknown server type "+server_type);
       }
     }
-    
+
     if (!protocol_type.empty()) {
       if (protocol_type == "binary") {
       } else if (protocol_type == "json") {
@@ -562,7 +568,6 @@ int main(int argc, char **argv) {
 
   if (vm.count("ssl")) {
     ssl = true;
-    signal(SIGPIPE, SIG_IGN);
   }
 
   // Dispatcher
@@ -570,6 +575,9 @@ int main(int argc, char **argv) {
   if (protocol_type == "json") {
     boost::shared_ptr<TProtocolFactory> jsonProtocolFactory(new TJSONProtocolFactory());
     protocolFactory = jsonProtocolFactory;
+  } else if (protocol_type == "compact") {
+    boost::shared_ptr<TProtocolFactory> compactProtocolFactory(new TCompactProtocolFactory());
+    protocolFactory = compactProtocolFactory;
   } else {
     boost::shared_ptr<TProtocolFactory> binaryProtocolFactory(new TBinaryProtocolFactoryT<TBufferBase>());
     protocolFactory = binaryProtocolFactory;
@@ -578,44 +586,43 @@ int main(int argc, char **argv) {
   // Processor
   boost::shared_ptr<TestHandler> testHandler(new TestHandler());
   boost::shared_ptr<ThriftTestProcessor> testProcessor(new ThriftTestProcessor(testHandler));
-  
+
   if (vm.count("processor-events")) {
     testProcessor->setEventHandler(boost::shared_ptr<TProcessorEventHandler>(
           new TestProcessorEventHandler()));
   }
-  
+
   // Transport
   boost::shared_ptr<TSSLSocketFactory> sslSocketFactory;
   boost::shared_ptr<TServerSocket> serverSocket;
 
   if (ssl) {
     sslSocketFactory = boost::shared_ptr<TSSLSocketFactory>(new TSSLSocketFactory());
-    sslSocketFactory->loadCertificate("./server-certificate.pem");
-    sslSocketFactory->loadPrivateKey("./server-private-key.pem");
+    sslSocketFactory->loadCertificate("keys/server.crt");
+    sslSocketFactory->loadPrivateKey("keys/server.key");
     sslSocketFactory->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
     serverSocket = boost::shared_ptr<TServerSocket>(new TSSLServerSocket(port, sslSocketFactory));
   } else {
-	if (domain_socket != "") {
-	  unlink(domain_socket.c_str());
-	  serverSocket = boost::shared_ptr<TServerSocket>(new TServerSocket(domain_socket));
-	  port = 0;
-	}
-	else {
+    if (domain_socket != "") {
+      unlink(domain_socket.c_str());
+      serverSocket = boost::shared_ptr<TServerSocket>(new TServerSocket(domain_socket));
+      port = 0;
+    } else {
       serverSocket = boost::shared_ptr<TServerSocket>(new TServerSocket(port));
-	}
+    }
   }
 
   // Factory
   boost::shared_ptr<TTransportFactory> transportFactory;
-  
+
   if (transport_type == "http" && server_type != "nonblocking") {
-    boost::shared_ptr<TTransportFactory> httpTransportFactory(new THttpServerTransportFactory()); 
+    boost::shared_ptr<TTransportFactory> httpTransportFactory(new THttpServerTransportFactory());
     transportFactory = httpTransportFactory;
   } else if (transport_type == "framed") {
-    boost::shared_ptr<TTransportFactory> framedTransportFactory(new TFramedTransportFactory()); 
+    boost::shared_ptr<TTransportFactory> framedTransportFactory(new TFramedTransportFactory());
     transportFactory = framedTransportFactory;
   } else {
-    boost::shared_ptr<TTransportFactory> bufferedTransportFactory(new TBufferedTransportFactory()); 
+    boost::shared_ptr<TTransportFactory> bufferedTransportFactory(new TBufferedTransportFactory());
     transportFactory = bufferedTransportFactory;
   }
 
@@ -628,14 +635,13 @@ int main(int argc, char **argv) {
   cout << endl;
 
   // Server
+  boost::shared_ptr<apache::thrift::server::TServer> server;
+
   if (server_type == "simple") {
-    TSimpleServer simpleServer(testProcessor,
+    server.reset(new TSimpleServer(testProcessor,
                                serverSocket,
                                transportFactory,
-                               protocolFactory);
-
-    simpleServer.serve();
-
+                               protocolFactory));
   } else if (server_type == "thread-pool") {
 
     boost::shared_ptr<ThreadManager> threadManager =
@@ -648,35 +654,47 @@ int main(int argc, char **argv) {
 
     threadManager->start();
 
-    TThreadPoolServer threadPoolServer(testProcessor,
+    server.reset(new TThreadPoolServer(testProcessor,
                                        serverSocket,
                                        transportFactory,
                                        protocolFactory,
-                                       threadManager);
-
-    threadPoolServer.serve();
-
+                                       threadManager));
   } else if (server_type == "threaded") {
 
-    TThreadedServer threadedServer(testProcessor,
+    server.reset(new TThreadedServer(testProcessor,
                                    serverSocket,
                                    transportFactory,
-                                   protocolFactory);
-
-    threadedServer.serve();
-
+                                   protocolFactory));
   } else if (server_type == "nonblocking") {
     if(transport_type == "http") {
       boost::shared_ptr<TestHandlerAsync> testHandlerAsync(new TestHandlerAsync(testHandler));
       boost::shared_ptr<TAsyncProcessor> testProcessorAsync(new ThriftTestAsyncProcessor(testHandlerAsync));
       boost::shared_ptr<TAsyncBufferProcessor> testBufferProcessor(new TAsyncProtocolProcessor(testProcessorAsync, protocolFactory));
-      
+
+      // not loading nonblockingServer into "server" because
+      // TEvhttpServer doesn't inherit from TServer, and doesn't
+      // provide a stop method.
       TEvhttpServer nonblockingServer(testBufferProcessor, port);
       nonblockingServer.serve();
-} else {
-      TNonblockingServer nonblockingServer(testProcessor, port);
-      nonblockingServer.serve();
+    } else {
+      server.reset(new TNonblockingServer(testProcessor, port));
     }
+  }
+
+  if(server.get() != NULL)
+  {
+    apache::thrift::concurrency::PlatformThreadFactory factory;
+    factory.setDetached(false);
+    boost::shared_ptr<apache::thrift::concurrency::Runnable> serverThreadRunner(server);
+    boost::shared_ptr<apache::thrift::concurrency::Thread> thread = factory.newThread(serverThreadRunner);
+    thread->start();
+
+    cout<<"Press enter to stop the server."<<endl;
+    cin.ignore(); //wait until a key is pressed
+
+    server->stop();
+    thread->join();
+    server.reset();
   }
 
   cout << "done." << endl;

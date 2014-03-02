@@ -1145,7 +1145,7 @@ void t_go_generator::generate_go_struct_reader(ofstream& out,
         }
 
         // if negative id, ensure we generate a valid method name
-        string field_method_prefix("readField");
+        string field_method_prefix("ReadField");
 
         if (field_id < 0) {
             field_method_prefix += "_";
@@ -1196,7 +1196,7 @@ void t_go_generator::generate_go_struct_reader(ofstream& out,
     for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
         string field_type_name(publicize((*f_iter)->get_type()->get_name()));
         string field_name(publicize((*f_iter)->get_name()));
-        string field_method_prefix("readField");
+        string field_method_prefix("ReadField");
         int32_t field_id = (*f_iter)->get_key();
 
         if (field_id < 0) {
@@ -1686,13 +1686,6 @@ void t_go_generator::generate_service_client(t_service* tservice)
                            "value " << type_to_go_type((*f_iter)->get_returntype()) << ", ";
             }
 
-            t_struct* exceptions = (*f_iter)->get_xceptions();
-            string errs = argument_list(exceptions);
-
-            if (errs.size()) {
-                f_service_ << errs << ", ";
-            }
-
             f_service_ <<
                        "err error) {" << endl;
             indent_up();
@@ -1724,7 +1717,7 @@ void t_go_generator::generate_service_client(t_service* tservice)
                        indent() << "  return" << endl <<
                        indent() << "}" << endl <<
                        indent() << "if p.SeqId != seqId {" << endl <<
-                       indent() << "  err = thrift.NewTApplicationException(thrift.BAD_SEQUENCE_ID, \"ping failed: out of sequence response\")" << endl <<
+                       indent() << "  err = thrift.NewTApplicationException(thrift.BAD_SEQUENCE_ID, \"" << (*f_iter)->get_name() << " failed: out of sequence response\")" << endl <<
                        indent() << "  return" << endl <<
                        indent() << "}" << endl <<
                        indent() << result << " := New" << publicize(resultname) << "()" << endl <<
@@ -1735,21 +1728,31 @@ void t_go_generator::generate_service_client(t_service* tservice)
                        indent() << "  return" << endl <<
                        indent() << "}" << endl;
 
-            // Careful, only return _result if not a void function
-            if (!(*f_iter)->get_returntype()->is_void()) {
-                f_service_ <<
-                           indent() << "value = " << result << ".Success" << endl;
-            }
-
             t_struct* xs = (*f_iter)->get_xceptions();
             const std::vector<t_field*>& xceptions = xs->get_members();
             vector<t_field*>::const_iterator x_iter;
 
             for (x_iter = xceptions.begin(); x_iter != xceptions.end(); ++x_iter) {
+                const std::string varname = variable_name_to_go_name((*x_iter)->get_name());
+                const std::string pubname = publicize(varname);
+
                 f_service_ <<
-                           indent() << "if " << result << "." << publicize((*x_iter)->get_name()) << " != nil {" << endl <<
-                           indent() << "  " << (*x_iter)->get_name() << " = " << result << "." << publicize((*x_iter)->get_name()) << endl <<
-                           indent() << "}" << endl;
+                           indent() << "if " << result << "." << pubname << " != nil {" << endl <<
+                           indent() << "err = " << result << "." << pubname << endl <<
+                           indent() << "return " << endl <<
+                           indent() << "}";
+
+                if ((x_iter + 1) != xceptions.end()) {
+                    f_service_ << " else ";
+                } else {
+                    f_service_ << endl;
+                }
+            }
+
+            // Careful, only return _result if not a void function
+            if (!(*f_iter)->get_returntype()->is_void()) {
+                f_service_ <<
+                           indent() << "value = " << result << ".Success" << endl;
             }
 
             f_service_ <<
@@ -1974,8 +1977,13 @@ void t_go_generator::generate_service_remote(t_service* tservice)
                     break;
 
                 case t_base_type::TYPE_STRING:
-                    f_remote <<
-                             indent() << "argvalue" << i << " := flag.Arg(" << flagArg << ")" << endl;
+                    if (((t_base_type*)the_type2)->is_binary()) {
+                        f_remote <<
+                                 indent() << "argvalue" << i << " := []byte(flag.Arg(" << flagArg << "))" << endl;
+                    } else {
+                        f_remote <<
+                                 indent() << "argvalue" << i << " := flag.Arg(" << flagArg << ")" << endl;
+                    }
                     break;
 
                 case t_base_type::TYPE_BOOL:
@@ -2089,13 +2097,6 @@ void t_go_generator::generate_service_remote(t_service* tservice)
                          indent() << "argvalue" << i << " := containerStruct" << i << "." << argName << endl;
             } else {
                 throw ("Invalid argument type in generate_service_remote");
-                string err1(tmp("err"));
-                f_remote <<
-                         indent() << "argvalue" << i << ", " << err1 << " := eval(flag.Arg(" << flagArg << "))" << endl <<
-                         indent() << "if " << err1 << " != nil {" << endl <<
-                         indent() << "  Usage()" << endl <<
-                         indent() << "  return" << endl <<
-                         indent() << "}" << endl;
             }
 
             if (the_type->is_typedef()) {
@@ -2321,19 +2322,12 @@ void t_go_generator::generate_process_function(t_service* tservice,
                indent() << "}" << endl <<
                indent() << "iprot.ReadMessageEnd()" << endl <<
                indent() << "result := New" << resultname << "()" << endl <<
+               indent() << "var err2 error" << endl <<
                indent() << "if ";
 
     if (!tfunction->is_oneway()) {
         if (!tfunction->get_returntype()->is_void()) {
             f_service_ << "result.Success, ";
-        }
-
-        t_struct* exceptions = tfunction->get_xceptions();
-        const vector<t_field*>& fields = exceptions->get_members();
-        vector<t_field*>::const_iterator f_iter;
-
-        for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
-            f_service_ << "result." << publicize(variable_name_to_go_name((*f_iter)->get_name())) << ", ";
         }
     }
 
@@ -2342,7 +2336,7 @@ void t_go_generator::generate_process_function(t_service* tservice,
     const std::vector<t_field*>& fields = arg_struct->get_members();
     vector<t_field*>::const_iterator f_iter;
     f_service_ <<
-               "err = p.handler." << publicize(tfunction->get_name()) << "(";
+               "err2 = p.handler." << publicize(tfunction->get_name()) << "(";
     bool first = true;
 
     for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
@@ -2355,24 +2349,50 @@ void t_go_generator::generate_process_function(t_service* tservice,
         f_service_ << "args." << publicize(variable_name_to_go_name((*f_iter)->get_name()));
     }
 
-    f_service_ << "); err != nil {" << endl <<
+    f_service_ << "); err2 != nil {" << endl;
+    
+    t_struct* exceptions = tfunction->get_xceptions();
+    const vector<t_field*>& x_fields = exceptions->get_members();
+	if( ! x_fields.empty()) {
+        f_service_ << indent() << "switch v := err2.(type) {" << endl;
+
+        vector<t_field*>::const_iterator xf_iter;
+
+        for (xf_iter = x_fields.begin(); xf_iter != x_fields.end(); ++xf_iter) {
+            f_service_ <<
+                        indent() << "  case *" << type_name((*xf_iter)->get_type()) << ":" << endl <<
+                        indent() << "result." << publicize(variable_name_to_go_name((*xf_iter)->get_name())) << " = v" << endl;
+        }
+        
+		f_service_ <<
+                   indent() << "  default:" << endl;
+    }
+
+    f_service_ <<
                indent() << "  x := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, \"Internal error processing " << escape_string(tfunction->get_name()) << ": \" + err.Error())" << endl <<
                indent() << "  oprot.WriteMessageBegin(\"" << escape_string(tfunction->get_name()) << "\", thrift.EXCEPTION, seqId)" << endl <<
                indent() << "  x.Write(oprot)" << endl <<
                indent() << "  oprot.WriteMessageEnd()" << endl <<
                indent() << "  oprot.Flush()" << endl <<
-               indent() << "  return" << endl <<
+               indent() << "  return false, err2" << endl ;
+			   
+    if( ! x_fields.empty()) {
+	    f_service_ <<
+                   indent() << "}" << endl;
+    }			   
+
+    f_service_ <<
                indent() << "}" << endl <<
-               indent() << "if err2 := oprot.WriteMessageBegin(\"" << escape_string(tfunction->get_name()) << "\", thrift.REPLY, seqId); err2 != nil {" << endl <<
+               indent() << "if err2 = oprot.WriteMessageBegin(\"" << escape_string(tfunction->get_name()) << "\", thrift.REPLY, seqId); err2 != nil {" << endl <<
                indent() << "  err = err2" << endl <<
                indent() << "}" << endl <<
-               indent() << "if err2 := result.Write(oprot); err == nil && err2 != nil {" << endl <<
+               indent() << "if err2 = result.Write(oprot); err == nil && err2 != nil {" << endl <<
                indent() << "  err = err2" << endl <<
                indent() << "}" << endl <<
-               indent() << "if err2 := oprot.WriteMessageEnd(); err == nil && err2 != nil {" << endl <<
+               indent() << "if err2 = oprot.WriteMessageEnd(); err == nil && err2 != nil {" << endl <<
                indent() << "  err = err2" << endl <<
                indent() << "}" << endl <<
-               indent() << "if err2 := oprot.Flush(); err == nil && err2 != nil {" << endl <<
+               indent() << "if err2 = oprot.Flush(); err == nil && err2 != nil {" << endl <<
                indent() << "  err = err2" << endl <<
                indent() << "}" << endl <<
                indent() << "if err != nil {" << endl <<
@@ -2915,7 +2935,7 @@ void t_go_generator::generate_serialize_map_element(ofstream &out,
     t_field vfield(tmap->get_val_type(), "");
     kfield.set_req(t_field::T_OPT_IN_REQ_OUT);
     vfield.set_req(t_field::T_OPT_IN_REQ_OUT);
-    generate_serialize_field(out, &kfield, kiter);
+    generate_serialize_field(out, &kfield, kiter, true);
     generate_serialize_field(out, &vfield, viter);
 }
 
@@ -3103,14 +3123,6 @@ string t_go_generator::function_signature_if(t_function* tfunction,
         signature += "r " + type_to_go_type(ret);
 
         if (addError || errs.size() == 0) {
-            signature += ", ";
-        }
-    }
-
-    if (errs.size() > 0) {
-        signature += errs;
-
-        if (addError) {
             signature += ", ";
         }
     }

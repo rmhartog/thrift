@@ -75,4 +75,4 @@ typename enable_if<is_vector<R>, R>::type internalize(thrift_list_handle const i
   return implode<typename R::value_type>(*reinterpret_cast<TThriftList*>(in)->getVector());
 }
 
-#endif
+#endif	

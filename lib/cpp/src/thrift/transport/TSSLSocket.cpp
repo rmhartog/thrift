@@ -41,7 +41,6 @@
 #define OPENSSL_VERSION_NO_THREAD_ID 0x10000000L
 
 using namespace std;
-using namespace boost;
 using namespace apache::thrift::concurrency;
 
 struct CRYPTO_dynlock_value {
@@ -88,7 +87,7 @@ TSSLSocket::TSSLSocket(boost::shared_ptr<SSLContext> ctx):
   TSocket(), server_(false), ssl_(NULL), ctx_(ctx) {
 }
 
-TSSLSocket::TSSLSocket(boost::shared_ptr<SSLContext> ctx, int socket):
+TSSLSocket::TSSLSocket(boost::shared_ptr<SSLContext> ctx, THRIFT_SOCKET socket):
   TSocket(socket), server_(false), ssl_(NULL), ctx_(ctx) {
 }
 
@@ -363,6 +362,7 @@ TSSLSocketFactory::TSSLSocketFactory(): server_(false) {
 
 TSSLSocketFactory::~TSSLSocketFactory() {
   Guard guard(mutex_);
+  ctx_.reset();
   count_--;
   if (count_ == 0) {
     cleanupOpenSSL();
@@ -375,7 +375,7 @@ boost::shared_ptr<TSSLSocket> TSSLSocketFactory::createSocket() {
   return ssl;
 }
 
-boost::shared_ptr<TSSLSocket> TSSLSocketFactory::createSocket(int socket) {
+boost::shared_ptr<TSSLSocket> TSSLSocketFactory::createSocket(THRIFT_SOCKET socket) {
   boost::shared_ptr<TSSLSocket> ssl(new TSSLSocket(ctx_, socket));
   setup(ssl);
   return ssl;
@@ -489,7 +489,7 @@ int TSSLSocketFactory::passwordCallback(char* password,
   return length;
 }
 
-static shared_array<Mutex> mutexes;
+static boost::shared_array<Mutex> mutexes;
 
 static void callbackLocking(int mode, int n, const char*, int) {
   if (mode & CRYPTO_LOCK) {
@@ -533,7 +533,7 @@ void TSSLSocketFactory::initializeOpenSSL() {
   SSL_library_init();
   SSL_load_error_strings();
   // static locking
-  mutexes = shared_array<Mutex>(new Mutex[::CRYPTO_num_locks()]);
+  mutexes = boost::shared_array<Mutex>(new Mutex[::CRYPTO_num_locks()]);
   if (mutexes == NULL) {
     throw TTransportException(TTransportException::INTERNAL_ERROR,
           "initializeOpenSSL() failed, "
@@ -591,7 +591,7 @@ void buildErrors(string& errors, int errno_copy) {
     }
   }
   if (errors.empty()) {
-    errors = "error code: " + lexical_cast<string>(errno_copy);
+    errors = "error code: " + boost::lexical_cast<string>(errno_copy);
   }
 }
 
