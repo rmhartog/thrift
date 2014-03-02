@@ -21,31 +21,6 @@
  */
 
 namespace Thrift\Protocol;
-
-<<<<<<< HEAD
-use Thrift\Protocol\TProtocolDecorator;
-use Thrift\Type\TMessageType;
-
-class TMultiplexedProtocol extends TProtocolDecorator {
-
-  const SEPARATOR = ':';
-
-  private $SERVICE_NAME;
-
-  public function __construct($protocol, $serviceName) {
-    parent::__construct($protocol);
-    $this->SERVICE_NAME = $serviceName;
-  }
-
-  public function writeMessageBegin($name, $type, $seqid) {
-    if ($type == TMessageType::CALL || $type == TMessageType::ONEWAY) {
-      parent::writeMessageBegin($this->SERVICE_NAME . self::SEPARATOR . $name, $type, $seqid);
-    } else {
-      parent::writeMessageBegin($name, $type, $seqid);
-    }
-  }
-}
-=======
 use Thrift\Type\TMessageType;
 
 /**
