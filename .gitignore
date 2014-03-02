@@ -17,9 +17,6 @@
 *_ReSharper*
 *.opensdf
 *.swp
-<<<<<<< HEAD
-*~
-=======
 *.m4
 *~
 gen-*
@@ -28,7 +25,6 @@ Makefile.in
 autom4te.cache
 node_modules
 
->>>>>>> f85fdd7a3af3255ea2464118930c10f582caf035
 .project
 .pydevproject
 .sonar
