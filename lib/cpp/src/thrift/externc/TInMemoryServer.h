@@ -23,7 +23,7 @@
 #include <thrift/processor/TMultiplexedProcessor.h>
 #include <thrift/server/TSimpleServer.h>
 #include <thrift/transport/TBufPairServer.h>
-#include <thrift/protocol/TCompactProtocol.h>
+#include <thrift/protocol/TBinaryProtocol.h>
 
 using namespace ::apache::thrift::server;
 using namespace ::apache::thrift::transport;
@@ -61,7 +61,7 @@ class TInMemoryServer : public TMuxerOwner, public TSimpleServer {
                         boost::shared_ptr<TProcessor>(muxer_),
                         boost::shared_ptr<TBufPairServer>(new TBufPairServer()),
                         boost::shared_ptr<TTransportFactory>(new TBufferedTransportFactory()),
-                        boost::shared_ptr<TProtocolFactory>(new TCompactProtocolFactory())) {
+                        boost::shared_ptr<TProtocolFactory>(new TBinaryProtocolFactory())) {
     buffer_ = static_pointer_cast<TBufPairServer>(getServerTransport());
   }
 
