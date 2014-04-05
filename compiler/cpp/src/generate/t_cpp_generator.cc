@@ -4288,7 +4288,7 @@ void t_cpp_generator::generate_service_delegator(t_service* tservice) {
       } else if (is_complex_type(returntype)) {
         f_delegator << "reinterpret_cast<" << type_name_c(returntype, false, true) << ">(&" << return_parameter << ")";
       } else {
-        f_delegator << return_parameter;
+        f_delegator << "&" << return_parameter;
       }
       first = false;
     }
@@ -5049,7 +5049,7 @@ string t_cpp_generator::type_name_c(t_type* ttype, bool in_type, bool in_return,
  * @return Explicit C type
  */
 string t_cpp_generator::base_type_name_c(t_base_type::t_base tbase, bool in_type, bool in_return, bool no_ref) {
-  string retref = (!no_ref && in_return ? "&" : "");
+  string retref = (!no_ref && in_return ? "*" : "");
   string parconst = (in_return ? "" : "_const");
 
   switch (tbase) {
