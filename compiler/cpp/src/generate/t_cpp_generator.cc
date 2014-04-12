@@ -133,7 +133,7 @@ class t_cpp_generator : public t_oop_generator {
   void generate_struct_writer        (std::ofstream& out, t_struct* tstruct, bool pointers=false);
   void generate_struct_result_writer (std::ofstream& out, t_struct* tstruct, bool pointers=false);
   void generate_struct_swap          (std::ofstream& out, t_struct* tstruct);
-
+ 
   void generate_c_accessors          (std::ofstream& out, std::ofstream& out_h, t_struct* tstruct, bool is_exception=false);
 
   /**
@@ -400,8 +400,8 @@ void t_cpp_generator::init_generator() {
     f_types_c_ <<
       "#include <thrift/externc/TExternal.h>" << endl <<
       endl <<
-      "#include \"" << get_include_prefix(*get_program()) << program_name_ <<
-      "_types.h\"" << endl <<
+      //"#include \"" << get_include_prefix(*get_program()) << program_name_ <<
+      //"_types.h\"" << endl <<
       "#include \"" << get_include_prefix(*get_program()) << program_name_ <<
       "_types_c.h\"" << endl <<
       endl;
@@ -417,12 +417,6 @@ void t_cpp_generator::init_generator() {
         endl;
     }
 
-    f_types_c_ <<  
-      "#ifdef __cplusplus" << endl <<
-      "extern \"C\" {" << endl <<
-      "#endif" << endl <<
-      endl;
-
     f_types_c_h_ <<
       "#include <thrift/externc/TContext_api.h>" << endl <<
       "#include <thrift/externc/TThriftList_api.h>" << endl <<
@@ -433,7 +427,18 @@ void t_cpp_generator::init_generator() {
       "#define " << program_name_ << "_TYPES_C_H" << endl <<
       endl <<
       "#ifdef __cplusplus" << endl <<
-      "extern \"C\" {" << endl <<
+      "  #include \"" << get_include_prefix(*get_program()) << program_name_ << "_types.h\"" << endl;
+
+      if ( (!ns.empty()) && (ns.compare(" ::") != 0)) {
+        f_types_c_h_ <<
+          "using namespace " << string(ns, 0, ns.size()-2) << ";" << endl <<
+          endl;
+      }
+
+    f_types_c_h_ <<
+      "  #define EXTERN extern \"C\" " << endl <<
+      "#else" << endl <<
+      "  #define EXTERN " << endl <<
       "#endif" << endl <<
       endl;
   }
@@ -553,15 +558,7 @@ void t_cpp_generator::close_generator() {
   f_types_ <<
     "#endif" << endl;
   if (gen_extern_c_) {
-    f_types_c_ << endl <<
-      "#ifdef __cplusplus" << endl <<
-      "}" << endl <<
-      "#endif" << endl;
-
     f_types_c_h_ << endl <<
-      "#ifdef __cplusplus" << endl <<
-      "}" << endl <<
-      "#endif" << endl <<
       endl <<
       "#endif" << endl;
   }
@@ -1718,33 +1715,48 @@ void t_cpp_generator::generate_c_accessors(ofstream& out, ofstream& out_h, t_str
       const_handle_name << ";" << endl <<
       endl;
 
+  out_h << 
+    indent() << "#ifdef __cplusplus" << endl <<
+    indent() << "template<class T1, class T2> const " << str_name << "& internalize(" << const_handle_name << " h) {" << endl <<
+    indent() << "  return *reinterpret_cast<const " << str_name << "*>(h);" << endl <<
+    indent() << "}" << endl <<
+    indent() << const_handle_name << " externalize(thrift_context_handle ctx, const " << str_name << "& s);" << endl <<
+    indent() << "#endif" << endl <<
+    endl;
+
+  out <<
+    indent() << const_handle_name << " externalize(thrift_context_handle ctx, const " << str_name << "& s) {" << endl <<
+    indent() << "  return reinterpret_cast<" << const_handle_name << ">(&s);" << endl <<
+    indent() << "}" << endl <<
+    endl;
+
   out_h <<
-    indent() << handle_name << " create_" << str_name << "(thrift_context_handle);" << endl <<
-    indent() << "void destroy_" << str_name << "(thrift_context_handle, " << handle_name << ");" << endl << 
+    indent() << "EXTERN " << handle_name << " create_" << str_name << "(thrift_context_handle);" << endl <<
+    indent() << "EXTERN void destroy_" << str_name << "(thrift_context_handle, " << handle_name << ");" << endl << 
       endl;
 
   if (is_exception) {
     out_h <<
-      indent() << "thrift_result_const_handle " << str_name << "_result(thrift_context_handle, " << handle_name << ");" << endl <<
+      indent() << "EXTERN thrift_result_const_handle " << str_name << "_result(thrift_context_handle, " << handle_name << ");" << endl <<
         endl;
   }
 
   out <<
-    indent() << handle_name << " create_" << str_name << "(thrift_context_handle ctx) {" << endl <<
+    indent() << "EXTERN " << handle_name << " create_" << str_name << "(thrift_context_handle ctx) {" << endl <<
     indent() << "  return reinterpret_cast<" << handle_name << ">(new " << str_name << ");" << endl <<
     indent() << "}" << endl <<
       endl;
 
   if (is_exception) {
     out <<
-      indent() << "thrift_result_const_handle " << str_name << "_result(thrift_context_handle ctx, " << handle_name << " ex) {" << endl <<
+      indent() << "EXTERN thrift_result_const_handle " << str_name << "_result(thrift_context_handle ctx, " << handle_name << " ex) {" << endl <<
       indent() << "  return reinterpret_cast<thrift_result_const_handle>(ex);" << endl <<
       indent() << "}" << endl <<
         endl;
   }
 
   out <<
-    indent() << "void destroy_" << str_name << "(thrift_context_handle ctx, " << handle_name << " handle) {" << endl <<
+    indent() << "EXTERN void destroy_" << str_name << "(thrift_context_handle ctx, " << handle_name << " handle) {" << endl <<
     indent() << "  delete reinterpret_cast<" << str_name << "*>(handle);" << endl <<
     indent() << "}" << endl <<
       endl;
@@ -1759,12 +1771,12 @@ void t_cpp_generator::generate_c_accessors(ofstream& out, ofstream& out_h, t_str
 
     if (tfield->get_req() != t_field::T_REQUIRED) {
       out_h <<
-        indent() << "bool " << tstruct->get_name() << "_" <<
+        indent() << "EXTERN bool " << tstruct->get_name() << "_" <<
           tfield->get_name() << "_isset(" <<
           const_handle_name << ");" << endl;
 
       out <<
-        indent() << "bool " << tstruct->get_name() << "_" <<
+        indent() << "EXTERN bool " << tstruct->get_name() << "_" <<
           tfield->get_name() << "_isset(" <<
           const_handle_name << " handle) {" << endl;
 
@@ -1780,13 +1792,13 @@ void t_cpp_generator::generate_c_accessors(ofstream& out, ofstream& out_h, t_str
     // Getter
 
     out_h <<
-      indent() << type_name_c(tfield->get_type(), false, false, true) << " " <<
+      indent() << "EXTERN " << type_name_c(tfield->get_type(), false, false) << " " <<
         tstruct->get_name() << "_get_" <<
         tfield->get_name() << "(thrift_context_handle, " <<
         const_handle_name << ");" << endl;
 
     out <<
-      indent() << type_name_c(tfield->get_type(), false, false, true) << " " <<
+      indent() << "EXTERN " << type_name_c(tfield->get_type(), false, false) << " " <<
         tstruct->get_name() << "_get_" <<
         tfield->get_name() << "(thrift_context_handle ctx, " <<
         const_handle_name << " handle) {" << endl;
@@ -1815,14 +1827,14 @@ void t_cpp_generator::generate_c_accessors(ofstream& out, ofstream& out_h, t_str
     // Setter
 
     out_h <<
-      indent() << "void " << tstruct->get_name() << "_set_" <<
+      indent() << "EXTERN void " << tstruct->get_name() << "_set_" <<
         tfield->get_name() << "(" <<
         handle_name << ", " <<
         type_name_c(tfield->get_type(), false, false) <<
         ");" << endl;
 
     out <<
-      indent() << "void " << tstruct->get_name() << "_set_" <<
+      indent() << "EXTERN void " << tstruct->get_name() << "_set_" <<
         tfield->get_name() << "(" <<
         handle_name << " handle, " <<
         type_name_c(tfield->get_type(), false, false) <<
@@ -1844,12 +1856,12 @@ void t_cpp_generator::generate_c_accessors(ofstream& out, ofstream& out_h, t_str
 
     if (tfield->get_type()->is_string()) {
       out_h <<
-        indent() << "void " << tstruct->get_name() << "_set_" <<
+        indent() << "EXTERN void " << tstruct->get_name() << "_set_" <<
           tfield->get_name() << "_from_char(" <<
           handle_name << ", const char*);" << endl;
 
       out <<
-        indent() << "void " << tstruct->get_name() << "_set_" <<
+        indent() << "EXTERN void " << tstruct->get_name() << "_set_" <<
           tfield->get_name() << "_from_char(" <<
           handle_name << " handle, const char* str) {" << endl <<
         indent() << "  reinterpret_cast<" << type_name(tstruct) << "*>(handle)->__set_" <<
