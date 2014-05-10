@@ -29,6 +29,7 @@
 #include <boost/type_traits.hpp> 
 
 using namespace boost;
+using namespace boost::type_traits;
 
 class TThriftList : public TDestroyable {
 private:
@@ -60,7 +61,10 @@ thrift_list_handle explode(thrift_context_handle ctx, const std::vector<T>& v) {
 }
 
 template<typename T>
-typename disable_if<is_vector<T>, std::vector<T> >::type implode(std::vector<void*>& v) {
+typename disable_if< ice_or<
+             is_vector<T>::value,
+             is_same<T, std::string>::value
+         >, std::vector<T> >::type implode(std::vector<void*>& v) {
     std::vector<void*>::const_iterator it;
     typename std::vector<T> out;
 
@@ -95,7 +99,8 @@ typename enable_if<is_vector<T>, std::vector<T> >::type implode(std::vector<void
     return out;
 }
 
-std::vector<std::string> implode(std::vector<void*>& v) {
+template<typename T>
+typename enable_if<is_same<T, std::string>, std::vector<std::string> >::type implode(std::vector<void*>& v) {
     std::vector<TThriftString> temp;
     std::vector<std::string> out;
     std::vector<TThriftString>::iterator iter;
