@@ -31,6 +31,7 @@ using namespace boost;
 
 class TThriftList : public TDestroyable {
 private:
+    bool ext;
     std::vector<void*>* vector;
 public:
     TThriftList();

@@ -5,11 +5,12 @@
 #include <cstring>
 #include <string>
 
-TThriftString::TThriftString() : str(new std::string) { }
-TThriftString::TThriftString(std::string *s) : str(new std::string(*s)) { }
+TThriftString::TThriftString() : ext(false), str(new std::string) { }
+TThriftString::TThriftString(std::string *s) : ext(true), str(s) { }
 TThriftString::~TThriftString() {
-    delete str;
-    str = 0;
+    if (!ext) {
+        delete str;
+    }
 }
 
 std::string* TThriftString::getString() {

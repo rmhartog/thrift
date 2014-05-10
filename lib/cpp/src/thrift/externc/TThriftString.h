@@ -27,6 +27,7 @@
 
 class TThriftString : public TDestroyable {
 private:
+    bool ext;
     std::string* str;
 public:
     TThriftString();

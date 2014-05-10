@@ -6,7 +6,9 @@
 TThriftList::TThriftList() : vector(new std::vector<void*>) {}
 TThriftList::TThriftList(std::vector<void*>& v) : vector(&v) {}
 TThriftList::~TThriftList() {
-    delete vector;
+    if (!ext) {
+        delete vector;
+    }
 }
 
 std::vector<void*>* TThriftList::getVector() {
