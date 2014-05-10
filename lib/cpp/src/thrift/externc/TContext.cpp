@@ -18,15 +18,24 @@
  */
 
 #include <thrift/externc/TContext.h>
+#include <thrift/externc/TContext_api.h>
 
 TContext::TContext() {}
 TContext::~TContext() {
-    //std::vector<TDestroyable*>::iterator destroy;
-    //for (destroy = destroyables.begin(); destroy != destroyables.end(); ++destroy) {
-    //    delete *destroy;
-    //}
+    std::vector<TDestroyable*>::iterator destroy;
+    for (destroy = destroyables.begin(); destroy != destroyables.end(); ++destroy) {
+        delete *destroy;
+    }
 }
 
 void TContext::newObject(TDestroyable *obj) {
     destroyables.push_back(obj);
+}
+
+extern "C" thrift_context_handle create_thrift_context() {
+    return reinterpret_cast<thrift_context_handle>(new TContext());
+}
+
+extern "C" void destroy_thrift_context(thrift_context_const_handle h) {
+    delete reinterpret_cast<TContext const *>(h);
 }
