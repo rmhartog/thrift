@@ -101,13 +101,11 @@ typename enable_if<is_vector<T>, std::vector<T> >::type implode(std::vector<void
 
 template<typename T>
 typename enable_if<is_same<T, std::string>, std::vector<std::string> >::type implode(std::vector<void*>& v) {
-    std::vector<TThriftString> temp;
-    std::vector<std::string> out;
-    std::vector<TThriftString>::iterator iter;
-    temp = implode<TThriftString>(v);
+    std::vector<void*>::const_iterator it;
+    typename std::vector<std::string> out;
 
-    for (iter = temp.begin(); iter != temp.end(); iter++) {
-        out.push_back(*(iter->getString()));
+    for (it = v.begin(); it != v.end(); it++) {
+        out.push_back(*reinterpret_cast<TThriftString*>(*it)->getString());
     }
 
     return out;
