@@ -21,6 +21,7 @@
 #define _THRIFT_EXTERNC_THRIFTLIST_H_
 
 #include <thrift/externc/TContext.h>
+#include <thrift/externc/TThriftString.h>
 #include <thrift/externc/TThriftList_api.h>
 
 #include <vector>
@@ -89,6 +90,19 @@ typename enable_if<is_vector<T>, std::vector<T> >::type implode(std::vector<void
 
     for (it = v.begin(); it != v.end(); it++) {
         out.push_back(implode<typename T::value_type>(*reinterpret_cast<TThriftList*>(*it)->getVector()));
+    }
+
+    return out;
+}
+
+std::vector<std::string> implode(std::vector<void*>& v) {
+    std::vector<TThriftString> temp;
+    std::vector<std::string> out;
+    std::vector<TThriftString>::iterator iter;
+    temp = implode<TThriftString>(v);
+
+    for (iter = temp.begin(); iter != temp.end(); iter++) {
+        out.push_back(*(iter->getString()));
     }
 
     return out;
