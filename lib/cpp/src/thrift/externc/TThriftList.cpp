@@ -3,8 +3,8 @@
 
 #include <stdexcept>
 
-TThriftList::TThriftList() : vector(new std::vector<void*>) {}
-TThriftList::TThriftList(std::vector<void*>& v) : vector(&v) {}
+TThriftList::TThriftList() : ext(false), vector(new std::vector<void*>) {}
+TThriftList::TThriftList(std::vector<void*>& v) : ext(true), vector(&v) {}
 TThriftList::~TThriftList() {
     if (!ext) {
         delete vector;
