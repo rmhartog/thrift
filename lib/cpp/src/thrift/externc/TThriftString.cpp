@@ -7,10 +7,7 @@
 
 TThriftString::TThriftString() : ext(false), str(new std::string) { }
 TThriftString::TThriftString(std::string *s) : ext(true), str(s) { }
-TThriftString::TThriftString(const TThriftString &o) {
-    ext = o.ext;
-    str = o.str;
-}
+TThriftString::TThriftString(const TThriftString &o) : ext(false), str(new std::string(o.str)) { }
 TThriftString::~TThriftString() {
     if (!ext) {
         delete str;
