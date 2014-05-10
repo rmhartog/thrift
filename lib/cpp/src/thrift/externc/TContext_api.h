@@ -27,7 +27,7 @@ extern "C" {
 typedef struct _thrift_context_handle* thrift_context_handle;
 typedef const struct _thrift_context_handle* thrift_context_const_handle;
 
-thrift_context_handle create_thrift_context();
+thrift_context_handle create_thrift_context(void);
 void                  destroy_thrift_context(thrift_context_const_handle);
  
 #ifdef __cplusplus
