@@ -42,6 +42,10 @@ extern "C" unsigned int thrift_string_size(thrift_string_const_handle handle) {
     return thrift_string_get_string_const(handle)->size();
 }
 
+extern "C" const char* thrift_string_cstr(thrift_string_const_handle handle) {
+    return thrift_string_get_string_const(handle)->c_str();
+}
+
 extern "C" void thrift_string_to_array(thrift_string_const_handle handle, char **outbuffer, unsigned int *outsize) {
     const std::string* str = thrift_string_get_string_const(handle);
     

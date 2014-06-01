@@ -33,6 +33,7 @@ thrift_string_handle	create_thrift_string(thrift_context_handle);
 void			destroy_thrift_string(thrift_context_handle, thrift_string_handle);
 	
 unsigned int		thrift_string_size(thrift_string_const_handle);
+const char*     thrift_string_cstr(thrift_string_const_handle);
 void			thrift_string_to_array(thrift_string_const_handle, char**, unsigned int*);
 void			thrift_string_set_array(thrift_string_handle, const char*, int);
 
