@@ -120,13 +120,14 @@ if test "$enable_libs" = "no"; then
   with_go="no"
   with_d="no"
   with_nodejs="no"
+  with_lua="no"
 fi
 
 
 AX_THRIFT_LIB(cpp, [C++], yes)
 have_cpp=no
 if test "$with_cpp" = "yes";  then
-  AX_BOOST_BASE([1.40.0])
+  AX_BOOST_BASE([1.54.0])
   if test "x$succeeded" = "xyes" ; then
     have_cpp="yes"
   fi
@@ -213,6 +214,16 @@ if test "$with_nodejs" = "yes"; then
 fi
 AM_CONDITIONAL(WITH_NODEJS, [test "$have_nodejs" = "yes"])
 AM_CONDITIONAL(HAVE_NPM, [test "x$NPM" != "x"])
+
+AX_THRIFT_LIB(lua, [Lua], yes)
+have_lua=no
+if test "$with_lua" = "yes"; then
+  AC_PATH_PROGS([LUA], [lua])
+  if test "x$LUA" != "x"; then
+    have_lua="yes"
+  fi
+fi
+AM_CONDITIONAL(WITH_LUA, [test "$have_lua" = "yes"])
 
 AX_THRIFT_LIB(python, [Python], yes)
 if test "$with_python" = "yes";  then
@@ -519,6 +530,7 @@ AC_CHECK_FUNCS([strtoul])
 AC_CHECK_FUNCS([bzero])
 AC_CHECK_FUNCS([ftruncate])
 AC_CHECK_FUNCS([gethostbyname])
+AC_CHECK_FUNCS([gethostbyname_r])
 AC_CHECK_FUNCS([gettimeofday])
 AC_CHECK_FUNCS([memmove])
 AC_CHECK_FUNCS([memset])
@@ -537,6 +549,8 @@ AC_CHECK_FUNCS([alarm])
 AC_CHECK_FUNCS([clock_gettime])
 AC_CHECK_FUNCS([sched_get_priority_min])
 AC_CHECK_FUNCS([sched_get_priority_max])
+AC_CHECK_FUNCS([inet_ntoa])
+AC_CHECK_FUNCS([pow])
 
 if test "$cross_compiling" = "no" ; then
   AX_SIGNED_RIGHT_SHIFT
@@ -634,8 +648,10 @@ AC_CONFIG_FILES([
   lib/php/test/Makefile
   lib/py/Makefile
   lib/rb/Makefile
+  lib/lua/Makefile
   test/Makefile
   test/cpp/Makefile
+  test/go/Makefile
   test/hs/Makefile
   test/php/Makefile
   test/perl/Makefile
@@ -646,6 +662,7 @@ AC_CONFIG_FILES([
   tutorial/Makefile
   tutorial/cpp/Makefile
   tutorial/go/Makefile
+  tutorial/hs/Makefile
   tutorial/java/Makefile
   tutorial/js/Makefile
   tutorial/nodejs/Makefile
@@ -674,6 +691,7 @@ echo "Building Erlang Library ...... : $have_erlang"
 echo "Building Go Library .......... : $have_go"
 echo "Building D Library ........... : $have_d"
 echo "Building NodeJS Library ...... : $have_nodejs"
+echo "Building Lua Library ......... : $have_lua"
 
 if test "$have_cpp" = "yes" ; then
   echo
@@ -743,6 +761,11 @@ if test "$have_nodejs" = "yes" ; then
   echo "NodeJS Library:"
   echo "   Using NodeJS .............. : $NODEJS"
   echo "   Using NodeJS version....... : $($NODEJS --version)"
+fi
+if test "$have_lua" = "yes" ; then
+  echo
+  echo "Lua Library:"
+  echo "   Using Lua .............. : $LUA"
 fi
 echo
 echo "If something is missing that you think should be present,"

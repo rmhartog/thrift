@@ -19,16 +19,20 @@
 *.swp
 *.m4
 *~
+
+.*project
+junit*.properties
 gen-*
 Makefile
 Makefile.in
 autom4te.cache
 node_modules
+compile
+test-driver
 
-.project
-.pydevproject
 .sonar
 .DS_Store
+.svn
 
 /contrib/.vagrant/
 /autoscan.log
@@ -74,6 +78,7 @@ node_modules
 /lib/cpp/test/OptionalRequiredTest
 /lib/cpp/test/SpecializationTest
 /lib/cpp/test/ReflectionTest
+/lib/cpp/test/RecursiveTest
 /lib/cpp/test/TFDTransportTest
 /lib/cpp/test/TFileTransportTest
 /lib/cpp/test/TPipedTransportTest
@@ -81,6 +86,7 @@ node_modules
 /lib/cpp/test/UnitTests
 /lib/cpp/test/ZlibTest
 /lib/cpp/test/concurrency_test
+/lib/cpp/test/link_test
 /lib/cpp/test/processor_test
 /lib/cpp/test/tests.xml
 /lib/cpp/concurrency_test
@@ -92,6 +98,7 @@ node_modules
 /lib/c_glib/*.gcda
 /lib/c_glib/*.gcno
 /lib/c_glib/*.loT
+/lib/c_glib/test/*.gcno
 /lib/c_glib/test/testwrapper.sh
 /lib/c_glib/test/testwrapper-test*
 /lib/c_glib/test/testbinaryprotocol
@@ -107,8 +114,8 @@ node_modules
 /lib/c_glib/test/testtransportsocket
 /lib/c_glib/thriftc.pc
 /lib/c_glib/thrift_c_glib.pc
-/lib/csharp/src/bin/
-/lib/csharp/src/obj/
+/lib/csharp/**/bin/
+/lib/csharp/**/obj/
 /lib/d/libthriftd.a
 /lib/d/test/serialization_benchmark
 /lib/d/test/transport_test
@@ -190,6 +197,7 @@ node_modules
 /ltmain.sh
 /missing
 /stamp-h1
+/test/status.html
 /test/cpp/StressTest
 /test/cpp/StressTestNonBlocking
 /test/cpp/TestClient

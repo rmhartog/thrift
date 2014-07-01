@@ -33,22 +33,27 @@ parser.add_option("--zlib", action="store_true", dest="zlib",
     help="use zlib wrapper for compressed transport")
 parser.add_option("--ssl", action="store_true", dest="ssl",
     help="use SSL for encrypted transport")
-parser.add_option('-v', '--verbose', action="store_const", 
+parser.add_option("--multiple", action="store_true", dest="multiple",
+    help="use multiple service")
+parser.add_option('-v', '--verbose', action="store_const",
     dest="verbose", const=2,
     help="verbose output")
-parser.add_option('-q', '--quiet', action="store_const", 
+parser.add_option('-q', '--quiet', action="store_const",
     dest="verbose", const=0,
     help="minimal output")
-parser.add_option('--proto',  dest="proto", type="string",
+parser.add_option('--protocol',  dest="proto", type="string",
     help="protocol to use, one of: accel, binary, compact, json")
+parser.add_option('--transport',  dest="trans", type="string",
+    help="transport to use, one of: buffered, framed")
 parser.set_defaults(port=9090, verbose=1, proto='binary')
 options, args = parser.parse_args()
 
 sys.path.insert(0, options.genpydir)
 
-from ThriftTest import ThriftTest
+from ThriftTest import ThriftTest, SecondService
 from ThriftTest.ttypes import *
 from thrift.Thrift import TException
+from thrift import TMultiplexedProcessor
 from thrift.transport import TTransport
 from thrift.transport import TSocket
 from thrift.transport import TZlibTransport
@@ -61,6 +66,12 @@ PROT_FACTORIES = {'binary': TBinaryProtocol.TBinaryProtocolFactory,
     'accel': TBinaryProtocol.TBinaryProtocolAcceleratedFactory,
     'compact': TCompactProtocol.TCompactProtocolFactory,
     'json': TJSONProtocol.TJSONProtocolFactory}
+
+class SecondHandler:
+
+  def blahBlah(self):
+    if options.verbose > 1:
+      print 'blahBlah()'
 
 class TestHandler:
 
@@ -176,10 +187,10 @@ class TestHandler:
                   byte_thing=arg0, i32_thing=arg1, i64_thing=arg2)
 
 
-# set up the protocol factory form the --proto option
+# set up the protocol factory form the --protocol option
 pfactory_cls = PROT_FACTORIES.get(options.proto, None)
 if pfactory_cls is None:
-  raise AssertionError('Unknown --proto option: %s' % options.proto)
+  raise AssertionError('Unknown --protocol option: %s' % options.proto)
 pfactory = pfactory_cls()
 
 # get the server type (TSimpleServer, TNonblockingServer, etc...)
@@ -188,8 +199,15 @@ if len(args) > 1:
 server_type = args[0]
 
 # Set up the handler and processor objects
-handler = TestHandler()
-processor = ThriftTest.Processor(handler)
+if not options.multiple:
+    handler   = TestHandler()
+    processor = ThriftTest.Processor(handler)
+else:
+    processor = TMultiplexedProcessor.TMultiplexedProcessor()
+    handler   = TestHandler()
+    processor.registerProcessor("ThriftTest", ThriftTest.Processor(handler))
+    handler   = SecondHandler()
+    processor.registerProcessor("SecondService", SecondService.Processor(handler))
 
 # Handle THttpServer as a special case
 if server_type == 'THttpServer':
@@ -198,14 +216,26 @@ if server_type == 'THttpServer':
   sys.exit(0)
 
 # set up server transport and transport factory
+
+script_dir = os.path.dirname(__file__) #<-- absolute dir the script is in
+rel_path = "../keys/server.pem"
+abs_key_path = os.path.join(script_dir, rel_path)
+
 host = None
 if options.ssl:
   from thrift.transport import TSSLSocket
-  transport = TSSLSocket.TSSLServerSocket(host, options.port, certfile='../keys/server.pem')
+  transport = TSSLSocket.TSSLServerSocket(host, options.port, certfile=abs_key_path)
 else:
   transport = TSocket.TServerSocket(host, options.port)
 tfactory = TTransport.TBufferedTransportFactory()
-
+if options.trans == 'buffered':
+  tfactory = TTransport.TBufferedTransportFactory()
+elif options.trans == 'framed':
+  tfactory = TTransport.TFramedTransportFactory()
+elif options.trans == '':
+  raise AssertionError('Unknown --transport option: %s' % options.trans)
+else:
+  tfactory = TTransport.TBufferedTransportFactory()
 # if --zlib, then wrap server transport, and use a different transport factory
 if options.zlib:
   transport = TZlibTransport.TZlibTransport(transport) # wrap  with zlib

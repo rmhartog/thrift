@@ -66,6 +66,9 @@ public:
     iter = parsed_options.find("nocamel");
     nocamel_style_ = (iter != parsed_options.end());
 
+    iter = parsed_options.find("fullcamel");
+    fullcamel_style_ = (iter != parsed_options.end());
+
     iter = parsed_options.find("android_legacy");
     android_legacy_ = (iter != parsed_options.end());
 
@@ -77,6 +80,9 @@ public:
     if (java5_) {
       android_legacy_ = true;
     }
+
+    iter = parsed_options.find("reuse-objects");
+    reuse_objects_ = (iter != parsed_options.end());
 
     out_dir_base_ = (bean_style_ ? "gen-javabean" : "gen-java");
   }
@@ -197,16 +203,19 @@ public:
   void generate_deserialize_set_element  (std::ofstream& out,
                                           t_set*      tset,
                                           std::string prefix="",
+                                          std::string obj="",
                                           bool has_metadata = true);
 
   void generate_deserialize_map_element  (std::ofstream& out,
                                           t_map*      tmap,
                                           std::string prefix="",
+                                          std::string obj="",
                                           bool has_metadata = true);
 
   void generate_deserialize_list_element (std::ofstream& out,
                                           t_list*     tlist,
                                           std::string prefix="",
+                                          std::string obj="",
                                           bool has_metadata = true);
 
   void generate_serialize_field          (std::ofstream& out,
@@ -264,7 +273,7 @@ public:
   std::string java_package();
   std::string java_type_imports();
   std::string java_suppressions();
-  std::string type_name(t_type* ttype, bool in_container=false, bool in_init=false, bool skip_generic=false);
+  std::string type_name(t_type* ttype, bool in_container=false, bool in_init=false, bool skip_generic=false, bool force_namespace = false);
   std::string base_type_name(t_base_type* tbase, bool in_container=false);
   std::string declare_field(t_field* tfield, bool init=false, bool comment=false);
   std::string function_signature(t_function* tfunction, std::string prefix="");
@@ -307,9 +316,11 @@ public:
   bool bean_style_;
   bool private_members_;
   bool nocamel_style_;
+  bool fullcamel_style_;
   bool android_legacy_;
   bool java5_;
   bool sorted_containers_;
+  bool reuse_objects_;
 };
 
 
@@ -861,7 +872,7 @@ void t_java_generator::generate_union_constructor(ofstream& out, t_struct* tstru
     if (type->is_base_type() && ((t_base_type*)type)->is_binary()) {
       indent(out) << "public static " << type_name(tstruct) << " " << (*m_iter)->get_name() << "(byte[] value) {" << endl;
       indent(out) << "  " << type_name(tstruct) << " x = new " << type_name(tstruct) << "();" << endl;
-      indent(out) << "  x.set" << get_cap_name((*m_iter)->get_name()) << "(ByteBuffer.wrap(value));" << endl;
+      indent(out) << "  x.set" << get_cap_name((*m_iter)->get_name()) << "(ByteBuffer.wrap(Arrays.copyOf(value, value.length)));" << endl;
       indent(out) << "  return x;" << endl;
       indent(out) << "}" << endl << endl;
     }
@@ -896,7 +907,7 @@ void t_java_generator::generate_union_getters_and_setters(ofstream& out, t_struc
 
       indent(out) << "public ByteBuffer buffer" << get_cap_name("for") << get_cap_name(field->get_name()) << "() {" << endl;
       indent(out) << "  if (getSetField() == _Fields." << constant_name(field->get_name()) << ") {" << endl;
-      indent(out) << "    return (ByteBuffer)getFieldValue();" << endl;
+      indent(out) << "    return org.apache.thrift.TBaseHelper.copyBinary((ByteBuffer)getFieldValue());" << endl;
       indent(out) << "  } else {" << endl;
       indent(out) << "    throw new RuntimeException(\"Cannot get field '" << field->get_name()
         << "' because union is currently set to \" + getFieldDesc(getSetField()).name);" << endl;
@@ -918,7 +929,7 @@ void t_java_generator::generate_union_getters_and_setters(ofstream& out, t_struc
     generate_java_doc(out, field);
     if (type->is_base_type() && ((t_base_type*)type)->is_binary()) {
       indent(out) << "public void set" << get_cap_name(field->get_name()) << "(byte[] value) {" << endl;
-      indent(out) << "  set" << get_cap_name(field->get_name()) << "(ByteBuffer.wrap(value));" << endl;
+      indent(out) << "  set" << get_cap_name(field->get_name()) << "(ByteBuffer.wrap(Arrays.copyOf(value, value.length)));" << endl;
       indent(out) << "}" << endl;
 
       out << endl;
@@ -1407,8 +1418,15 @@ void t_java_generator::generate_java_struct_definition(ofstream &out,
     indent(out) << "this();" << endl;
     for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
       if ((*m_iter)->get_req() != t_field::T_OPTIONAL) {
-        indent(out) << "this." << (*m_iter)->get_name() << " = " <<
-          (*m_iter)->get_name() << ";" << endl;
+        t_type* type = get_true_type((*m_iter)->get_type());
+        if (type->is_base_type() && ((t_base_type*)type)->is_binary()) {
+          indent(out) << "this." << (*m_iter)->get_name()
+            << " = org.apache.thrift.TBaseHelper.copyBinary("
+            << (*m_iter)->get_name() << ");" << endl;
+        } else {
+          indent(out) << "this." << (*m_iter)->get_name() << " = "
+            << (*m_iter)->get_name() << ";" << endl;
+        }
         generate_isset_set(out, (*m_iter), "");
       }
     }
@@ -1941,7 +1959,7 @@ void t_java_generator::generate_java_bean_boilerplate(ofstream& out,
       indent(out) << "}" << endl << endl;
 
       indent(out) << "public ByteBuffer buffer" << get_cap_name("for") << cap_name << "() {" << endl;
-      indent(out) << "  return " << field_name << ";" << endl;
+      indent(out) << "  return org.apache.thrift.TBaseHelper.copyBinary(" << field_name << ");" << endl;
       indent(out) << "}" << endl << endl;
     } else {
       indent(out) << "public " << type_name(type);
@@ -1968,7 +1986,10 @@ void t_java_generator::generate_java_bean_boilerplate(ofstream& out,
         out << type_name(tstruct);
       }
       out << " set" << cap_name << "(byte[] " << field_name << ") {" << endl;
-      indent(out) << "  set" << cap_name << "(" << field_name << " == null ? (ByteBuffer)null : ByteBuffer.wrap(" << field_name << "));" << endl;
+      indent(out) << "  this." << field_name << " = "
+        << field_name << " == null ? (ByteBuffer)null"
+        << " : ByteBuffer.wrap(Arrays.copyOf("
+        << field_name << ", " << field_name << ".length));" << endl;
       if (!bean_style_) {
         indent(out) << "  return this;" << endl;
       }
@@ -1982,7 +2003,13 @@ void t_java_generator::generate_java_bean_boilerplate(ofstream& out,
     }
     out << " set" << cap_name << "(" << type_name(type) << " " << field_name << ") {" << endl;
     indent_up();
-    indent(out) << "this." << field_name << " = " << field_name << ";" << endl;
+    indent(out) << "this." << field_name << " = ";
+    if (type->is_base_type() && ((t_base_type*)type)->is_binary()) {
+      out << "org.apache.thrift.TBaseHelper.copyBinary(" << field_name << ")";
+    } else {
+      out << field_name;
+    }
+    out << ";" << endl;
     generate_isset_set(out, field, "");
     if (!bean_style_) {
       indent(out) << "return this;" << endl;
@@ -3066,7 +3093,7 @@ void t_java_generator::generate_deserialize_field(ofstream& out,
     }
     out << endl;
   } else if (type->is_enum()) {
-    indent(out) << name << " = " << type_name(tfield->get_type(), true, false) + ".findByValue(iprot.readI32());" << endl;
+    indent(out) << name << " = " << type_name(tfield->get_type(), true, false, false, true) + ".findByValue(iprot.readI32());" << endl;
   } else {
     printf("DO NOT KNOW HOW TO DESERIALIZE FIELD '%s' TYPE '%s'\n",
            tfield->get_name().c_str(), type_name(type).c_str());
@@ -3079,9 +3106,17 @@ void t_java_generator::generate_deserialize_field(ofstream& out,
 void t_java_generator::generate_deserialize_struct(ofstream& out,
                                                    t_struct* tstruct,
                                                    string prefix) {
-  out <<
-    indent() << prefix << " = new " << type_name(tstruct) << "();" << endl <<
-    indent() << prefix << ".read(iprot);" << endl;
+
+    if (reuse_objects_) {
+      indent(out) << "if (" << prefix << " == null) {" << endl;
+      indent_up();
+    }
+    indent(out) << prefix << " = new " << type_name(tstruct) << "();" << endl;
+    if (reuse_objects_) {
+      indent_down();
+      indent(out) << "}" << endl;
+    }
+    indent(out) << prefix << ".read(iprot);" << endl;
 }
 
 /**
@@ -3126,7 +3161,14 @@ void t_java_generator::generate_deserialize_container(ofstream& out,
     }
   }
 
-  indent(out) << prefix << " = new " << type_name(ttype, false, true);
+  if (reuse_objects_) {
+    indent(out) << "if (" << prefix << " == null) {" << endl;
+    indent_up();
+  }
+
+  out << 
+      indent() << prefix << " = new " << type_name(ttype, false, true); 
+
   // size the collection correctly
   if (sorted_containers_ && (ttype->is_map() || ttype->is_set())) {
     // TreeSet and TreeMap don't have any constructor which takes a capactity as an argument
@@ -3138,21 +3180,17 @@ void t_java_generator::generate_deserialize_container(ofstream& out,
       << ");" << endl;
   }
 
-  // For loop iterates over elements
-  string i = tmp("_i");
-  indent(out) <<
-    "for (int " << i << " = 0; " <<
-    i << " < " << obj << ".size" << "; " <<
-    "++" << i << ")" << endl;
-
-  scope_up(out);
+  if (reuse_objects_) {
+    indent_down();
+    indent(out) << "}" << endl;
+  }
 
   if (ttype->is_map()) {
-    generate_deserialize_map_element(out, (t_map*)ttype, prefix, has_metadata);
+    generate_deserialize_map_element(out, (t_map*)ttype, prefix, obj, has_metadata);
   } else if (ttype->is_set()) {
-    generate_deserialize_set_element(out, (t_set*)ttype, prefix, has_metadata);
+    generate_deserialize_set_element(out, (t_set*)ttype, prefix, obj, has_metadata);
   } else if (ttype->is_list()) {
-    generate_deserialize_list_element(out, (t_list*)ttype, prefix, has_metadata);
+    generate_deserialize_list_element(out, (t_list*)ttype, prefix, obj, has_metadata);
   }
 
   scope_down(out);
@@ -3176,14 +3214,24 @@ void t_java_generator::generate_deserialize_container(ofstream& out,
  */
 void t_java_generator::generate_deserialize_map_element(ofstream& out,
                                                         t_map* tmap,
-                                                        string prefix, bool has_metadata) {
+                                                        string prefix, 
+                                                        string obj, bool has_metadata) {
   string key = tmp("_key");
   string val = tmp("_val");
   t_field fkey(tmap->get_key_type(), key);
   t_field fval(tmap->get_val_type(), val);
 
-  indent(out) << declare_field(&fkey) << endl;
-  indent(out) << declare_field(&fval) << endl;
+  indent(out) << declare_field(&fkey, reuse_objects_, false) << endl;
+  indent(out) << declare_field(&fval, reuse_objects_, false) << endl;
+
+  // For loop iterates over elements
+     string i = tmp("_i");
+     indent(out) <<
+       "for (int " << i << " = 0; " <<
+          i << " < " << obj << ".size" << "; " <<
+          "++" << i << ")" << endl;
+  
+  scope_up(out);
 
   generate_deserialize_field(out, &fkey, "", has_metadata);
   generate_deserialize_field(out, &fval, "", has_metadata);
@@ -3196,15 +3244,25 @@ void t_java_generator::generate_deserialize_map_element(ofstream& out,
  */
 void t_java_generator::generate_deserialize_set_element(ofstream& out,
                                                         t_set* tset,
-                                                        string prefix, bool has_metadata) {
+                                                        string prefix, 
+                                                        string obj, bool has_metadata) {
   string elem = tmp("_elem");
   t_field felem(tset->get_elem_type(), elem);
 
-  indent(out) << declare_field(&felem) << endl;
+  indent(out) << declare_field(&felem, reuse_objects_, false) << endl;
 
+  // For loop iterates over elements
+     string i = tmp("_i");
+     indent(out) <<
+       "for (int " << i << " = 0; " <<
+          i << " < " << obj << ".size" << "; " <<
+          "++" << i << ")" << endl;
+  scope_up(out);
+  
   generate_deserialize_field(out, &felem, "", has_metadata);
 
   indent(out) << prefix << ".add(" << elem << ");" << endl;
+
 }
 
 /**
@@ -3212,12 +3270,21 @@ void t_java_generator::generate_deserialize_set_element(ofstream& out,
  */
 void t_java_generator::generate_deserialize_list_element(ofstream& out,
                                                          t_list* tlist,
-                                                         string prefix, bool has_metadata) {
+                                                         string prefix, 
+                                                         string obj, bool has_metadata) {
   string elem = tmp("_elem");
   t_field felem(tlist->get_elem_type(), elem);
 
-  indent(out) << declare_field(&felem) << endl;
+  indent(out) << declare_field(&felem, reuse_objects_, false) << endl;
 
+  // For loop iterates over elements
+     string i = tmp("_i");
+     indent(out) <<
+       "for (int " << i << " = 0; " <<
+          i << " < " << obj << ".size" << "; " <<
+          "++" << i << ")" << endl;
+  scope_up(out);
+ 
   generate_deserialize_field(out, &felem, "", has_metadata);
 
   indent(out) << prefix << ".add(" << elem << ");" << endl;
@@ -3434,7 +3501,7 @@ void t_java_generator::generate_serialize_list_element(ofstream& out,
  * @param container Is the type going inside a container?
  * @return Java type name, i.e. HashMap<Key,Value>
  */
-string t_java_generator::type_name(t_type* ttype, bool in_container, bool in_init, bool skip_generic) {
+string t_java_generator::type_name(t_type* ttype, bool in_container, bool in_init, bool skip_generic, bool force_namespace) {
   // In Java typedefs are just resolved to their real type
   ttype = get_true_type(ttype);
   string prefix;
@@ -3479,7 +3546,7 @@ string t_java_generator::type_name(t_type* ttype, bool in_container, bool in_ini
 
   // Check for namespacing
   t_program* program = ttype->get_program();
-  if (program != NULL && program != program_) {
+  if ((program != NULL) && ((program != program_) || force_namespace)) {
     string package = program->get_namespace("java");
     if (!package.empty()) {
       return package + "." + ttype->get_name();
@@ -3774,10 +3841,26 @@ std::string t_java_generator::make_valid_java_identifier( std::string const & fr
 
 /**
  * Applies the correct style to a string based on the value of nocamel_style_
+ * and/or fullcamel_style_
  */
 std::string t_java_generator::get_cap_name(std::string name){
   if (nocamel_style_) {
     return "_" + name;
+  } if (fullcamel_style_) {
+    std::string new_name;
+    new_name += toupper(name[0]);
+    for (size_t i = 1; i < name.size(); i++) {
+      if (name[i] == '_') {
+        if (i < name.size()-1) {
+          i++;
+          new_name += toupper(name[i]);
+        }
+      }
+      else {
+        new_name += name[i];
+      }
+    }
+    return new_name;
   } else {
     name[0] = toupper(name[0]);
     return name;
@@ -4527,8 +4610,10 @@ THRIFT_REGISTER_GENERATOR(java, "Java",
 "    beans:           Members will be private, and setter methods will return void.\n"
 "    private-members: Members will be private, but setter methods will return 'this' like usual.\n"
 "    nocamel:         Do not use CamelCase field accessors with beans.\n"
+"    fullcamel:       Convert underscored_field_names to CamelCase.\n"
 "    android_legacy:  Do not use java.io.IOException(throwable) (available for Android 2.3 and above).\n"
 "    java5:           Generate Java 1.5 compliant code (includes android_legacy flag).\n"
+"    reuse-objects:   Data objects will not be allocated, but existing instances will be used (read and write).\n"
 "    sorted_containers:\n"
 "                     Use TreeSet/TreeMap instead of HashSet/HashMap as a implementation of set/map.\n"
 )

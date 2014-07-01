@@ -58,6 +58,10 @@ THRIFTCODE= \
             src/Transport/THttpClient.cs \
             src/Transport/THttpHandler.cs \
             src/Transport/TMemoryBuffer.cs \
+            src/Transport/TNamedPipeClientTransport.cs \
+            src/Transport/TNamedPipeServerTransport.cs \
+            src/Transport/TTLSSocket.cs \
+            src/Transport/TTLSServerSocket.cs \
             src/TProcessor.cs \
             src/TException.cs \
             src/TApplicationException.cs
@@ -88,4 +92,5 @@ EXTRA_DIST = \
              src/Thrift.sln \
              src/Thrift.WP7.csproj \
              src/Properties/AssemblyInfo.WP7.cs \
+             src/Transport/TSilverlightSocket.cs \
              test
